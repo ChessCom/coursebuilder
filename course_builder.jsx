@@ -1,5 +1,5 @@
 /**
- * Course Builder v104 – Premiere Pro ExtendScript
+ * Course Builder v105 – Premiere Pro ExtendScript
  *
  * ── CHANGELOG ────────────────────────────────────────────────────────────────
  *
@@ -1018,15 +1018,27 @@
                 if (_wavClip) {
                     var _origEnd = _wavClip.end.seconds;
                     if (maxEndSec && _origEnd > maxEndSec + 0.1) {
+                        /* 1er intento: clip.end = Time (a veces falla silenciosamente en PP2025) */
                         var _tE = new Time(); _tE.seconds = maxEndSec;
                         try { _wavClip.end = _tE; } catch(_te) {}
-                        log('    WAV @' + insertSec.toFixed(2) + 's → A1 ✓  (trimmed ' + _origEnd.toFixed(2) + 's → ' + maxEndSec.toFixed(2) + 's)');
+                        /* Verificar que funcionó; si no, usar clip.outPoint como fallback */
+                        var _afterEnd = _wavClip.end.seconds;
+                        if (_afterEnd > maxEndSec + 0.5) {
+                            /* clip.end no funcionó → calcular nuevo outPoint */
+                            var _newDur = maxEndSec - _wavClip.start.seconds;
+                            var _newOP  = _wavClip.inPoint.seconds + _newDur;
+                            try { var _opT = new Time(); _opT.seconds = _newOP; _wavClip.outPoint = _opT; } catch(_te2) {}
+                            _afterEnd = _wavClip.end.seconds;
+                            log('    WAV @' + insertSec.toFixed(2) + 's → A1 ✓  (trimmed via outPoint: ' + _origEnd.toFixed(2) + 's → ' + _afterEnd.toFixed(2) + 's, target=' + maxEndSec.toFixed(2) + 's)');
+                        } else {
+                            log('    WAV @' + insertSec.toFixed(2) + 's → A1 ✓  (trimmed: ' + _origEnd.toFixed(2) + 's → ' + _afterEnd.toFixed(2) + 's)');
+                        }
                     } else {
                         var _wdur = (_origEnd - _wavClip.start.seconds).toFixed(2);
                         log('    WAV @' + insertSec.toFixed(2) + 's → A1 ✓  (clip: ' + _wavClip.start.seconds.toFixed(2) + 's–' + _origEnd.toFixed(2) + 's, dur=' + _wdur + 's)');
                     }
                 }
-            } catch(_we) { log('    WAV @' + insertSec.toFixed(2) + 's → A1 ✓'); }
+            } catch(_we) { log('    WAV @' + insertSec.toFixed(2) + 's → A1 ✓  (trim err: ' + _we.message + ')'); }
             return true;
         } catch(e) {
             log('    WAV insert FAIL: ' + e.message);
@@ -1857,7 +1869,7 @@
 
     /* ══ MAIN ════════════════════════════════════════════════════════════ */
     if(!app||!app.project){ alert('Abre un proyecto primero.'); return; }
-    log('=== Course Builder v104 ===');
+    log('=== Course Builder v105 ===');
     log('LOG: '+LOG_FILE);
     saveLog();
     try{ app.enableQE(); log('QE: enabled'); }catch(e){ log('QE FAIL: '+e.message); }
