@@ -26,10 +26,6 @@ document.getElementById('app').innerHTML = [
     '</div>',
     '<div class="tool-divider">AutoCut <span class="tool-ver">v0.29</span></div>',
     '<div class="path-section">',
-    '  <div class="path-label">autocut.py:</div>',
-    '  <input type="text" id="acPath" class="path-input" placeholder="/path/to/autocut.py">',
-    '</div>',
-    '<div class="path-section">',
     '  <div class="path-label">Chapter (test):</div>',
     '  <input type="text" id="acChapter" class="path-input" placeholder="e.g. Chapter 4a Part1">',
     '</div>',
@@ -41,10 +37,6 @@ document.getElementById('app').innerHTML = [
     '  <div class="status" id="acStatus"></div>',
     '</div>',
     '<div class="tool-divider">BoardCrop <span class="tool-ver">v3.5</span></div>',
-    '<div class="path-section">',
-    '  <div class="path-label">crop_board_sel.py:</div>',
-    '  <input type="text" id="bcPath" class="path-input" placeholder="/path/to/crop_board_sel.py">',
-    '</div>',
     '<div class="section">',
     '  <div class="ac-buttons">',
     '    <button class="btn-ac-sel" id="btnBcSel">&#9654; BoardCrop CHESSBASE</button>',
@@ -53,10 +45,6 @@ document.getElementById('app').innerHTML = [
     '  <div class="status" id="bcStatus"></div>',
     '</div>',
     '<div class="tool-divider">AutoTrim <span class="tool-ver">v6</span></div>',
-    '<div class="path-section">',
-    '  <div class="path-label">claptrim.py:</div>',
-    '  <input type="text" id="atPath" class="path-input" placeholder="/path/to/claptrim.py">',
-    '</div>',
     '<div class="section">',
     '  <button class="btn-at" id="btnAt">&#9654; AutoTrim (clap + speech)</button>',
     '  <button class="btn-at-test" id="btnAt5sec">5secTest</button>',
@@ -101,10 +89,7 @@ document.getElementById('app').innerHTML = [
 /* ── Restore localStorage inputs ─────────────────────────────────────────── */
 (function () {
     var pairs = [
-        ['acPath',    'ac_py_path'],
         ['acChapter', 'ac_chapter'],
-        ['bcPath',    'bc_py_path'],
-        ['atPath',    'at_py_path'],
         ['msCourseId','ms_course_id']
     ];
     for (var i = 0; i < pairs.length; i++) {
@@ -142,35 +127,6 @@ function safeEvalScript(script, callback) {
     }
 }
 
-/* ── Derive sibling tool paths ───────────────────────────────────────────── */
-function deriveToolPaths(jsxPath) {
-    if (!jsxPath) return;
-    var dir = jsxPath.replace(/\\/g, '/').replace(/\/[^\/]+$/, '');
-    var tools = [
-        { id: 'acPath', key: 'ac_py_path', rel: 'autocut/autocut.py' },
-        { id: 'bcPath', key: 'bc_py_path', rel: 'chess_automation_extracted/crop_board_sel.py' },
-        { id: 'atPath', key: 'at_py_path', rel: 'claptrim.py' },
-    ];
-    for (var i = 0; i < tools.length; i++) {
-        var el = document.getElementById(tools[i].id);
-        if (el && !el.value) {
-            el.value = dir + '/' + tools[i].rel;
-            try { localStorage.setItem(tools[i].key, el.value); } catch(e) {}
-        }
-    }
-}
-
-(function () {
-    try {
-        var _fs   = require('fs');
-        var _path = require('path');
-        var _loc  = decodeURIComponent(window.location.href);
-        var _html = _loc.replace(/^file:\/\/\//, '/').replace(/^\/([A-Za-z]:)/, '$1').replace(/\/index\.html.*$/, '');
-        var _real = _fs.realpathSync(_html);
-        var _dir  = _path.dirname(_real);
-        deriveToolPaths(_path.join(_dir, 'course_builder.jsx').replace(/\\/g, '/'));
-    } catch(e) {}
-})();
 
 /* ── Script status bullet ────────────────────────────────────────────────── */
 function setScriptStatus(text, state) {
@@ -179,17 +135,15 @@ function setScriptStatus(text, state) {
     if (el) el.innerHTML = '<span style="color:' + color + '">&#9679;</span> ' + text;
 }
 
-/* ── Download JSX from GitHub (follows redirects) ────────────────────────── */
-var JSX_URL = 'https://raw.githubusercontent.com/raulmartinezchessable/course-builder/main/course_builder.jsx';
+/* ── Download from GitHub (follows redirects) ───────────────────────────── */
+var GH_BASE = 'https://raw.githubusercontent.com/raulmartinezchessable/course-builder/main/';
+var JSX_URL = GH_BASE + 'course_builder.jsx';
 function jsxUrl() { return JSX_URL + '?t=' + Date.now(); }
 
-function downloadRemoteJsx(url, onSuccess, onError) {
-    var https   = require('https');
-    var http    = require('http');
-    var os      = require('os');
-    var path    = require('path');
-    var fs      = require('fs');
-    var tmpPath = path.join(os.tmpdir(), 'course_builder_online.jsx');
+function downloadRemote(url, tmpPath, onSuccess, onError) {
+    var https = require('https');
+    var http  = require('http');
+    var fs    = require('fs');
 
     function doGet(getUrl, redirects) {
         if (redirects > 5) { onError('Too many redirects'); return; }
@@ -215,6 +169,16 @@ function downloadRemoteJsx(url, onSuccess, onError) {
         req.setTimeout(15000, function () { req.abort(); onError('No internet connection'); });
     }
     doGet(url, 0);
+}
+
+function downloadRemoteJsx(url, onSuccess, onError) {
+    var tmpPath = require('path').join(require('os').tmpdir(), 'course_builder_online.jsx');
+    downloadRemote(url, tmpPath, onSuccess, onError);
+}
+
+function downloadPy(scriptName, onSuccess, onError) {
+    var tmpPath = require('path').join(require('os').tmpdir(), 'cb_' + scriptName);
+    downloadRemote(GH_BASE + scriptName + '?t=' + Date.now(), tmpPath, onSuccess, onError);
 }
 
 /* Fetch on panel load — show status bullet early */
@@ -405,12 +369,7 @@ detectCourse();
 /* ═══════════════════════════════════════════════════════════════════════════
    AutoCut
 ═══════════════════════════════════════════════════════════════════════════ */
-var acPathInput    = document.getElementById('acPath');
 var acChapterInput = document.getElementById('acChapter');
-
-acPathInput.addEventListener('change', function () {
-    try { localStorage.setItem('ac_py_path', acPathInput.value.trim()); } catch(e) {}
-});
 acChapterInput.addEventListener('change', function () {
     try { localStorage.setItem('ac_chapter', acChapterInput.value.trim()); } catch(e) {}
 });
@@ -420,51 +379,55 @@ function runAutocut(singleChapter) {
     var btnAcRun  = document.getElementById('btnAcRun');
     var acStatus  = document.getElementById('acStatus');
     var logEl     = document.getElementById('log');
-    var pyPath    = acPathInput.value.trim();
     var chapter   = acChapterInput.value.trim();
 
-    if (!pyPath) { acStatus.textContent = 'ERROR: enter the path to autocut.py'; acStatus.className = 'status error'; return; }
     if (singleChapter && !chapter) { acStatus.textContent = 'ERROR: enter the chapter name'; acStatus.className = 'status error'; return; }
-
-    try { localStorage.setItem('ac_py_path', pyPath); }    catch(e) {}
-    try { localStorage.setItem('ac_chapter',  chapter); } catch(e) {}
-
     var cp;
     try { cp = require('child_process'); } catch(e) {
-        acStatus.textContent = 'ERROR: Node.js unavailable (restart Premiere after installing the extension)';
-        acStatus.className   = 'status error'; return;
+        acStatus.textContent = 'ERROR: Node.js unavailable'; acStatus.className = 'status error'; return;
     }
 
     btnAcTest.disabled   = true;
     btnAcRun.disabled    = true;
-    btnAcTest.textContent = singleChapter ? '⏳ Testing...'  : '▶ Test Chapter';
-    btnAcRun.textContent  = singleChapter ? '▶ Run Course'  : '⏳ Running...';
-    acStatus.textContent  = singleChapter ? 'AutoCut: testing "' + chapter + '"…' : 'AutoCut: processing full course…';
-    acStatus.className = 'status running';
-    logEl.textContent  = '';
-
-    var args = singleChapter ? [pyPath, chapter] : [pyPath];
-    var proc = cp.spawn('python3', args);
+    btnAcTest.textContent = singleChapter ? '⏳ Downloading…' : '▶ Test Chapter';
+    btnAcRun.textContent  = singleChapter ? '▶ Run Course'   : '⏳ Downloading…';
+    acStatus.textContent  = 'Downloading autocut.py…';
+    acStatus.className    = 'status running';
+    logEl.textContent     = '';
 
     function appendLine(text) { logEl.textContent += text; logEl.scrollTop = logEl.scrollHeight; }
-    var buf = '';
-    proc.stdout.on('data', function (chunk) {
-        buf += chunk.toString();
-        var lines = buf.split('\n'); buf = lines.pop();
-        for (var i = 0; i < lines.length; i++) appendLine(lines[i] + '\n');
-    });
-    proc.stderr.on('data', function (chunk) { appendLine('ERR: ' + chunk.toString()); });
-    proc.on('close', function (code) {
-        if (buf) appendLine(buf + '\n');
+
+    downloadPy('autocut.py', function (pyPath) {
+        acStatus.textContent  = singleChapter ? 'AutoCut: testing "' + chapter + '"…' : 'AutoCut: processing full course…';
+        btnAcTest.textContent = singleChapter ? '⏳ Testing…'  : '▶ Test Chapter';
+        btnAcRun.textContent  = singleChapter ? '▶ Run Course' : '⏳ Running…';
+
+        var args = singleChapter ? [pyPath, chapter] : [pyPath];
+        var proc = cp.spawn('python3', args);
+        var buf = '';
+        proc.stdout.on('data', function (chunk) {
+            buf += chunk.toString();
+            var lines = buf.split('\n'); buf = lines.pop();
+            for (var i = 0; i < lines.length; i++) appendLine(lines[i] + '\n');
+        });
+        proc.stderr.on('data', function (chunk) { appendLine('ERR: ' + chunk.toString()); });
+        proc.on('close', function (code) {
+            if (buf) appendLine(buf + '\n');
+            btnAcTest.disabled = false; btnAcRun.disabled = false;
+            btnAcTest.textContent = '▶ Test Chapter'; btnAcRun.textContent = '▶ Run Course';
+            acStatus.textContent = code === 0 ? (singleChapter ? 'Test completed.' : 'Course completed.') : 'AutoCut finished with code ' + code;
+            acStatus.className   = code === 0 ? 'status done' : 'status error';
+        });
+        proc.on('error', function (err) {
+            btnAcTest.disabled = false; btnAcRun.disabled = false;
+            btnAcTest.textContent = '▶ Test Chapter'; btnAcRun.textContent = '▶ Run Course';
+            acStatus.textContent = 'ERROR launching python3: ' + err.message;
+            acStatus.className   = 'status error';
+        });
+    }, function (err) {
         btnAcTest.disabled = false; btnAcRun.disabled = false;
         btnAcTest.textContent = '▶ Test Chapter'; btnAcRun.textContent = '▶ Run Course';
-        acStatus.textContent = code === 0 ? (singleChapter ? 'Test completed.' : 'Course completed.') : 'AutoCut finished with code ' + code;
-        acStatus.className   = code === 0 ? 'status done' : 'status error';
-    });
-    proc.on('error', function (err) {
-        btnAcTest.disabled = false; btnAcRun.disabled = false;
-        btnAcTest.textContent = '▶ Test Chapter'; btnAcRun.textContent = '▶ Run Course';
-        acStatus.textContent = 'ERROR launching python3: ' + err.message;
+        acStatus.textContent = 'ERROR downloading autocut.py: ' + err;
         acStatus.className   = 'status error';
     });
 }
@@ -475,11 +438,6 @@ document.getElementById('btnAcRun').addEventListener('click',  function () { run
 /* ═══════════════════════════════════════════════════════════════════════════
    BoardCrop
 ═══════════════════════════════════════════════════════════════════════════ */
-var bcPathInput = document.getElementById('bcPath');
-bcPathInput.addEventListener('change', function () {
-    try { localStorage.setItem('bc_py_path', bcPathInput.value.trim()); } catch(e) {}
-});
-
 var _BC_GET_CLIPS_JSX =
     '(function(){' +
         'var seq=app.project.activeSequence;' +
@@ -617,16 +575,13 @@ function runBoardCrop(mode) {
     var btnEl    = document.getElementById(btnId);
     var bcStatus = document.getElementById('bcStatus');
     var logEl    = document.getElementById('log');
-    var pyPath   = bcPathInput.value.trim();
 
-    if (!pyPath) { bcStatus.textContent = 'ERROR: enter the path to crop_board_sel.py'; bcStatus.className = 'status error'; return; }
     var cp;
     try { cp = require('child_process'); } catch(e) { bcStatus.textContent = 'ERROR: Node.js unavailable'; bcStatus.className = 'status error'; return; }
-    try { localStorage.setItem('bc_py_path', pyPath); } catch(e) {}
 
     btnEl.disabled       = true;
-    btnEl.textContent    = '⏳ Getting selection…';
-    bcStatus.textContent = 'BoardCrop ' + label + ': reading PP selection…';
+    btnEl.textContent    = '⏳ Downloading…';
+    bcStatus.textContent = 'Downloading crop_board_sel.py…';
     bcStatus.className   = 'status running';
     logEl.textContent    = '';
 
@@ -636,52 +591,59 @@ function runBoardCrop(mode) {
         bcStatus.textContent = msg; bcStatus.className = isErr ? 'status error' : 'status done';
     }
 
-    safeEvalScript(_BC_GET_CLIPS_JSX, function (raw) {
-        var data;
-        try { data = JSON.parse(raw); } catch(e) { done('ERROR: unexpected response from PP', true); return; }
-        if (data.error) { done('ERROR: ' + data.error, true); return; }
-        var clips = data.clips;
-        if (!clips || !clips.length) { done('ERROR: no clips selected in timeline', true); return; }
+    downloadPy('crop_board_sel.py', function (pyPath) {
+        btnEl.textContent    = '⏳ Getting selection…';
+        bcStatus.textContent = 'BoardCrop ' + label + ': reading PP selection…';
 
-        log('Selected clips: ' + clips.length);
-        var clipMap = {}, paths = [];
-        for (var i = 0; i < clips.length; i++) {
-            clipMap[clips[i].mp] = clips[i];
-            paths.push(clips[i].mp);
-            log('  [' + (clips[i].name || clips[i].mp) + ']');
-        }
+        safeEvalScript(_BC_GET_CLIPS_JSX, function (raw) {
+            var data;
+            try { data = JSON.parse(raw); } catch(e) { done('ERROR: unexpected response from PP', true); return; }
+            if (data.error) { done('ERROR: ' + data.error, true); return; }
+            var clips = data.clips;
+            if (!clips || !clips.length) { done('ERROR: no clips selected in timeline', true); return; }
 
-        btnEl.textContent    = '⏳ Detecting…';
-        bcStatus.textContent = 'BoardCrop ' + label + ': detecting board…';
-
-        var bcEnv = JSON.parse(JSON.stringify(process.env));
-        bcEnv.PATH = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:' + (bcEnv.PATH || '');
-        var proc = cp.spawn('python3', [pyPath, '--mode=' + mode].concat(paths), { env: bcEnv });
-        var buf = '';
-        proc.stdout.on('data', function (chunk) {
-            buf += chunk.toString();
-            var lines = buf.split('\n'); buf = lines.pop();
-            for (var li = 0; li < lines.length; li++) {
-                var line = lines[li].trim(); if (!line) continue;
-                var res = null; try { res = JSON.parse(line); } catch(e) {}
-                if (res && typeof res.ok !== 'undefined') {
-                    if (res.ok && clipMap[res.path]) {
-                        var c = clipMap[res.path];
-                        log('  detect OK → ' + (c.name || res.path));
-                        var jsx = _bcApplyJsx(c.ti, c.ci, res.path, res.left, res.top, res.right, res.bottom, res.clipW, res.clipH, mode);
-                        (function (clipName) {
-                            safeEvalScript(jsx, function (applyRes) { log('  apply [' + clipName + ']: ' + applyRes); });
-                        })(c.name || res.path);
-                    } else { log('  detect FAIL: ' + (res.error || 'unknown')); }
-                } else { log(line); }
+            log('Selected clips: ' + clips.length);
+            var clipMap = {}, paths = [];
+            for (var i = 0; i < clips.length; i++) {
+                clipMap[clips[i].mp] = clips[i];
+                paths.push(clips[i].mp);
+                log('  [' + (clips[i].name || clips[i].mp) + ']');
             }
+
+            btnEl.textContent    = '⏳ Detecting…';
+            bcStatus.textContent = 'BoardCrop ' + label + ': detecting board…';
+
+            var bcEnv = JSON.parse(JSON.stringify(process.env));
+            bcEnv.PATH = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:' + (bcEnv.PATH || '');
+            var proc = cp.spawn('python3', [pyPath, '--mode=' + mode].concat(paths), { env: bcEnv });
+            var buf = '';
+            proc.stdout.on('data', function (chunk) {
+                buf += chunk.toString();
+                var lines = buf.split('\n'); buf = lines.pop();
+                for (var li = 0; li < lines.length; li++) {
+                    var line = lines[li].trim(); if (!line) continue;
+                    var res = null; try { res = JSON.parse(line); } catch(e) {}
+                    if (res && typeof res.ok !== 'undefined') {
+                        if (res.ok && clipMap[res.path]) {
+                            var c = clipMap[res.path];
+                            log('  detect OK → ' + (c.name || res.path));
+                            var jsx = _bcApplyJsx(c.ti, c.ci, res.path, res.left, res.top, res.right, res.bottom, res.clipW, res.clipH, mode);
+                            (function (clipName) {
+                                safeEvalScript(jsx, function (applyRes) { log('  apply [' + clipName + ']: ' + applyRes); });
+                            })(c.name || res.path);
+                        } else { log('  detect FAIL: ' + (res.error || 'unknown')); }
+                    } else { log(line); }
+                }
+            });
+            proc.stderr.on('data', function (chunk) { log('ERR: ' + chunk.toString()); });
+            proc.on('close', function (code) {
+                if (buf.trim()) log(buf);
+                done(code === 0 ? 'BoardCrop completed.' : 'Finished with code ' + code, code !== 0);
+            });
+            proc.on('error', function (err) { done('ERROR python3: ' + err.message, true); });
         });
-        proc.stderr.on('data', function (chunk) { log('ERR: ' + chunk.toString()); });
-        proc.on('close', function (code) {
-            if (buf.trim()) log(buf);
-            done(code === 0 ? 'BoardCrop completed.' : 'Finished with code ' + code, code !== 0);
-        });
-        proc.on('error', function (err) { done('ERROR python3: ' + err.message, true); });
+    }, function (err) {
+        done('ERROR downloading crop_board_sel.py: ' + err, true);
     });
 }
 
@@ -691,10 +653,6 @@ document.getElementById('btnBcChessCom').addEventListener('click', function () {
 /* ═══════════════════════════════════════════════════════════════════════════
    AutoTrim
 ═══════════════════════════════════════════════════════════════════════════ */
-var atPathInput = document.getElementById('atPath');
-atPathInput.addEventListener('change', function () {
-    try { localStorage.setItem('at_py_path', atPathInput.value.trim()); } catch(e) {}
-});
 
 var _AT_GET_CLIPS_JSX =
     '(function(){' +
@@ -742,73 +700,77 @@ function runAutoTrim() {
     var btnAt    = document.getElementById('btnAt');
     var atStatus = document.getElementById('atStatus');
     var logEl    = document.getElementById('log');
-    var pyPath   = atPathInput.value.trim();
 
-    if (!pyPath) { atStatus.textContent = 'ERROR: enter the path to claptrim.py'; atStatus.className = 'status error'; return; }
     var cp;
     try { cp = require('child_process'); } catch(e) { atStatus.textContent = 'ERROR: Node.js unavailable'; atStatus.className = 'status error'; return; }
-    try { localStorage.setItem('at_py_path', pyPath); } catch(e) {}
 
     btnAt.disabled       = true;
-    btnAt.textContent    = '⏳ Reading sequence…';
-    atStatus.textContent = 'AutoTrim: getting clips…';
+    btnAt.textContent    = '⏳ Downloading…';
+    atStatus.textContent = 'Downloading claptrim.py…';
     atStatus.className   = 'status running';
     logEl.textContent    = '';
 
     function log(msg) { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; }
-    log('[AutoTrim JS v6b | panel v110.19]');
+    log('[AutoTrim JS v6b | panel v110.20]');
     function done(msg, isErr) {
         btnAt.disabled = false; btnAt.textContent = '▶ AutoTrim (clap + speech)';
         atStatus.textContent = msg; atStatus.className = isErr ? 'status error' : 'status done';
     }
 
-    safeEvalScript(_AT_GET_CLIPS_JSX, function (raw) {
-        var data;
-        try { data = JSON.parse(raw); } catch(e) { done('ERROR: unexpected response from PP', true); return; }
-        if (data.error) { done('ERROR: ' + data.error, true); return; }
-        var clips = data.clips;
-        if (!clips || !clips.length) { done('ERROR: no video clips in active sequence', true); return; }
+    downloadPy('claptrim.py', function (pyPath) {
+        btnAt.textContent    = '⏳ Reading sequence…';
+        atStatus.textContent = 'AutoTrim: getting clips…';
 
-        log('Clips found: ' + clips.length);
-        var clipMap = {}, paths = [];
-        for (var i = 0; i < clips.length; i++) {
-            clipMap[clips[i].mp] = clips[i]; paths.push(clips[i].mp);
-            log('  [' + (clips[i].name || clips[i].mp) + ']');
-        }
+        safeEvalScript(_AT_GET_CLIPS_JSX, function (raw) {
+            var data;
+            try { data = JSON.parse(raw); } catch(e) { done('ERROR: unexpected response from PP', true); return; }
+            if (data.error) { done('ERROR: ' + data.error, true); return; }
+            var clips = data.clips;
+            if (!clips || !clips.length) { done('ERROR: no video clips in active sequence', true); return; }
 
-        btnAt.textContent    = '⏳ Analyzing audio…';
-        atStatus.textContent = 'AutoTrim: detecting clap and speech end…';
-
-        var env = JSON.parse(JSON.stringify(process.env));
-        env.PATH = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:' + (env.PATH || '');
-        var proc = cp.spawn('python3', [pyPath].concat(paths), { env: env });
-        var buf = '';
-
-        proc.stdout.on('data', function (chunk) {
-            buf += chunk.toString();
-            var lines = buf.split('\n'); buf = lines.pop();
-            for (var li = 0; li < lines.length; li++) {
-                var line = lines[li].trim(); if (!line) continue;
-                var res = null; try { res = JSON.parse(line); } catch(e) {}
-                if (res && typeof res.ok !== 'undefined') {
-                    if (res.ok && clipMap[res.path]) {
-                        var c = clipMap[res.path];
-                        log('  clap=' + res.clap + 's  speech_end=' + res.speech_end + 's');
-                        log('  → in=' + res['in'] + 's  out=' + res.out + 's');
-                        var jsx = _atApplyJsx(c.ti, c.ci, res.path, res['in'], res.out);
-                        (function (clipName) {
-                            safeEvalScript(jsx, function (applyRes) { log('  apply [' + clipName + ']: ' + applyRes); });
-                        })(c.name || res.path);
-                    } else { log('  FAIL [' + (res.path || '?') + ']: ' + (res.error || 'unknown')); }
-                } else { log(line); }
+            log('Clips found: ' + clips.length);
+            var clipMap = {}, paths = [];
+            for (var i = 0; i < clips.length; i++) {
+                clipMap[clips[i].mp] = clips[i]; paths.push(clips[i].mp);
+                log('  [' + (clips[i].name || clips[i].mp) + ']');
             }
+
+            btnAt.textContent    = '⏳ Analyzing audio…';
+            atStatus.textContent = 'AutoTrim: detecting clap and speech end…';
+
+            var env = JSON.parse(JSON.stringify(process.env));
+            env.PATH = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:' + (env.PATH || '');
+            var proc = cp.spawn('python3', [pyPath].concat(paths), { env: env });
+            var buf = '';
+
+            proc.stdout.on('data', function (chunk) {
+                buf += chunk.toString();
+                var lines = buf.split('\n'); buf = lines.pop();
+                for (var li = 0; li < lines.length; li++) {
+                    var line = lines[li].trim(); if (!line) continue;
+                    var res = null; try { res = JSON.parse(line); } catch(e) {}
+                    if (res && typeof res.ok !== 'undefined') {
+                        if (res.ok && clipMap[res.path]) {
+                            var c = clipMap[res.path];
+                            log('  clap=' + res.clap + 's  speech_end=' + res.speech_end + 's');
+                            log('  → in=' + res['in'] + 's  out=' + res.out + 's');
+                            var jsx = _atApplyJsx(c.ti, c.ci, res.path, res['in'], res.out);
+                            (function (clipName) {
+                                safeEvalScript(jsx, function (applyRes) { log('  apply [' + clipName + ']: ' + applyRes); });
+                            })(c.name || res.path);
+                        } else { log('  FAIL [' + (res.path || '?') + ']: ' + (res.error || 'unknown')); }
+                    } else { log(line); }
+                }
+            });
+            proc.stderr.on('data', function (chunk) { log('ERR: ' + chunk.toString()); });
+            proc.on('close', function (code) {
+                if (buf.trim()) log(buf);
+                done(code === 0 ? 'AutoTrim completed.' : 'Finished with code ' + code, code !== 0);
+            });
+            proc.on('error', function (err) { done('ERROR python3: ' + err.message, true); });
         });
-        proc.stderr.on('data', function (chunk) { log('ERR: ' + chunk.toString()); });
-        proc.on('close', function (code) {
-            if (buf.trim()) log(buf);
-            done(code === 0 ? 'AutoTrim completed.' : 'Finished with code ' + code, code !== 0);
-        });
-        proc.on('error', function (err) { done('ERROR python3: ' + err.message, true); });
+    }, function (err) {
+        done('ERROR downloading claptrim.py: ' + err, true);
     });
 }
 
