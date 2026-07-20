@@ -1,5 +1,5 @@
 /**
- * Course Builder v105 – Premiere Pro ExtendScript
+ * Course Builder v106 – Premiere Pro ExtendScript
  *
  * ── CHANGELOG ────────────────────────────────────────────────────────────────
  *
@@ -1648,9 +1648,10 @@
                        extendió el clip. En algunas versiones de PP el nested se coloca
                        con la duración correcta y el extend no se dispara, pero el outPt
                        y el audio linked siguen necesitando corrección. */
-                    if(Math.abs(c2.outPoint.seconds-nestedTarget)>0.5){
-                        log('    outPt fix: '+c2.outPoint.seconds.toFixed(2)+'s → '+nestedTarget.toFixed(2)+'s');
-                        try{ c2.outPoint=makeTime(nestedTarget); }catch(e){ log('    outPt FAIL: '+e.message); }
+                    var _cloneDur=$.CB_LAST_CLONE_DUR; /* duración fuente del clon (no posición en timeline) */
+                    if(Math.abs(c2.outPoint.seconds-_cloneDur)>0.5){
+                        log('    outPt fix: '+c2.outPoint.seconds.toFixed(2)+'s → '+_cloneDur.toFixed(2)+'s');
+                        try{ c2.outPoint=makeTime(_cloneDur); }catch(e){ log('    outPt FAIL: '+e.message); }
                     }
                     var _nestedName=insertItem.name||'';
                     for(var _nai=0;_nai<seq.audioTracks.numTracks;_nai++){
@@ -1663,8 +1664,8 @@
                                 log('    A'+(_nai+1)+' nested audio fix: '+_nc.start.seconds.toFixed(2)+'–'+_nc.end.seconds.toFixed(2)+'s');
                                 try{ _nc.inPoint=makeTime(0); }catch(e){}
                                 try{ _nc.start=makeTime(posV2); }catch(e){}
-                                try{ _nc.end=makeTime(posV2+nestedTarget); }catch(e){}
-                                try{ _nc.outPoint=makeTime(nestedTarget); }catch(e){}
+                                try{ _nc.end=makeTime(nestedTarget); }catch(e){}    /* nestedTarget = posV2+cloneDur */
+                                try{ _nc.outPoint=makeTime(_cloneDur); }catch(e){}  /* duración fuente, no posición */
                                 try{ _nc.inPoint=makeTime(0); }catch(e){}
                                 log('    A'+(_nai+1)+' after fix: start='+_nc.start.seconds.toFixed(2)+' end='+_nc.end.seconds.toFixed(2)+' inPt='+_nc.inPoint.seconds.toFixed(2)+' outPt='+_nc.outPoint.seconds.toFixed(2));
                             }
@@ -1869,7 +1870,7 @@
 
     /* ══ MAIN ════════════════════════════════════════════════════════════ */
     if(!app||!app.project){ alert('Abre un proyecto primero.'); return; }
-    log('=== Course Builder v105 ===');
+    log('=== Course Builder v106 ===');
     log('LOG: '+LOG_FILE);
     saveLog();
     try{ app.enableQE(); log('QE: enabled'); }catch(e){ log('QE FAIL: '+e.message); }
