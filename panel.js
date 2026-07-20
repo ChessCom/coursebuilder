@@ -1,10 +1,10 @@
-/* Course Builder Panel v110.19 — https://github.com/raulmartinezchessable/course-builder */
+/* Course Builder Panel v110.20 — https://github.com/raulmartinezchessable/course-builder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v110.19</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v110.20</span></h1>',
     '  <div class="version" id="cepStatus">starting...</div>',
     '  <div class="version" id="scriptStatus"><span style="color:#aaa">&#9679;</span> loading script...</div>',
     '</header>',
@@ -182,6 +182,7 @@ function setScriptStatus(text, state) {
 
 /* ── Download JSX from GitHub (follows redirects) ────────────────────────── */
 var JSX_URL = 'https://raw.githubusercontent.com/raulmartinezchessable/course-builder/main/course_builder.jsx';
+function jsxUrl() { return JSX_URL + '?t=' + Date.now(); }
 
 function downloadRemoteJsx(url, onSuccess, onError) {
     var https   = require('https');
@@ -219,7 +220,7 @@ function downloadRemoteJsx(url, onSuccess, onError) {
 
 /* Fetch on panel load — show status bullet early */
 setScriptStatus('loading script...', 'loading');
-downloadRemoteJsx(JSX_URL,
+downloadRemoteJsx(jsxUrl(),
     function () { setScriptStatus('script loaded', 'ok'); },
     function (e) { setScriptStatus(e, 'error'); }
 );
@@ -239,7 +240,7 @@ function runScript(testOnly) {
     status.className   = 'status running';
     setScriptStatus('loading script...', 'loading');
 
-    downloadRemoteJsx(JSX_URL,
+    downloadRemoteJsx(jsxUrl(),
         function (scriptPath) {
             setScriptStatus('script loaded', 'ok');
             status.textContent = testOnly ? 'Launching (test mode)...' : 'Launching script...';
