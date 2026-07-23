@@ -44,9 +44,9 @@ document.getElementById('app').innerHTML = [
     '  </div>',
     '  <div class="status" id="bcStatus"></div>',
     '</div>',
-    '<div class="tool-divider">AutoTrim <span class="tool-ver">v6</span></div>',
+    '<div class="tool-divider">SyncClap <span class="tool-ver">v6</span></div>',
     '<div class="section">',
-    '  <button class="btn-at" id="btnAt">&#9654; AutoTrim (clap + speech)</button>',
+    '  <button class="btn-at" id="btnAt">&#9654; SyncClap (clap + speech)</button>',
     '  <button class="btn-at-test" id="btnAt5sec">5secTest</button>',
     '  <div class="status" id="atStatus"></div>',
     '</div>',
@@ -70,11 +70,6 @@ document.getElementById('app').innerHTML = [
     '    <button class="btn-test" id="btnMsPrev" style="display:none">&#8249; Previous</button>',
     '    <div class="status" id="msFillStatus"></div>',
     '  </div>',
-    '</div>',
-    '<div class="tool-divider">Color Code <span class="tool-ver">v1</span></div>',
-    '<div class="section">',
-    '  <button class="btn-run" id="btnColorCode">&#9654; Color Code Project</button>',
-    '  <div class="status" id="ccStatus"></div>',
     '</div>',
     '<div class="log-header">',
     '  <span>Log</span>',
@@ -651,7 +646,7 @@ document.getElementById('btnBcSel').addEventListener('click',     function () { 
 document.getElementById('btnBcChessCom').addEventListener('click', function () { runBoardCrop('chesscom');  });
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   AutoTrim
+   SyncClap
 ═══════════════════════════════════════════════════════════════════════════ */
 
 var _AT_GET_CLIPS_JSX =
@@ -696,7 +691,7 @@ function _atApplyJsx(ti, ci, mp, inSec, outSec) {
     '})()';
 }
 
-function runAutoTrim() {
+function runSyncClap() {
     var btnAt    = document.getElementById('btnAt');
     var atStatus = document.getElementById('atStatus');
     var logEl    = document.getElementById('log');
@@ -711,15 +706,15 @@ function runAutoTrim() {
     logEl.textContent    = '';
 
     function log(msg) { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; }
-    log('[AutoTrim JS v6b | panel v110.20]');
+    log('[SyncClap JS v6b | panel v110.20]');
     function done(msg, isErr) {
-        btnAt.disabled = false; btnAt.textContent = '▶ AutoTrim (clap + speech)';
+        btnAt.disabled = false; btnAt.textContent = '▶ SyncClap (clap + speech)';
         atStatus.textContent = msg; atStatus.className = isErr ? 'status error' : 'status done';
     }
 
     downloadPy('claptrim.py', function (pyPath) {
         btnAt.textContent    = '⏳ Reading sequence…';
-        atStatus.textContent = 'AutoTrim: getting clips…';
+        atStatus.textContent = 'SyncClap: getting clips…';
 
         safeEvalScript(_AT_GET_CLIPS_JSX, function (raw) {
             var data;
@@ -736,7 +731,7 @@ function runAutoTrim() {
             }
 
             btnAt.textContent    = '⏳ Analyzing audio…';
-            atStatus.textContent = 'AutoTrim: detecting clap and speech end…';
+            atStatus.textContent = 'SyncClap: detecting clap and speech end…';
 
             var env = JSON.parse(JSON.stringify(process.env));
             env.PATH = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:' + (env.PATH || '');
@@ -765,7 +760,7 @@ function runAutoTrim() {
             proc.stderr.on('data', function (chunk) { log('ERR: ' + chunk.toString()); });
             proc.on('close', function (code) {
                 if (buf.trim()) log(buf);
-                done(code === 0 ? 'AutoTrim completed.' : 'Finished with code ' + code, code !== 0);
+                done(code === 0 ? 'SyncClap completed.' : 'Finished with code ' + code, code !== 0);
             });
             proc.on('error', function (err) { done('ERROR python3: ' + err.message, true); });
         });
@@ -774,7 +769,7 @@ function runAutoTrim() {
     });
 }
 
-document.getElementById('btnAt').addEventListener('click', runAutoTrim);
+document.getElementById('btnAt').addEventListener('click', runSyncClap);
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Manual Sync v22
@@ -1182,40 +1177,5 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
     );
 });
 
-/* ── Color Code ──────────────────────────────────────────────────────────── */
-document.getElementById('btnColorCode').addEventListener('click', function () {
-    var logEl = document.getElementById('log'), ccStatus = document.getElementById('ccStatus');
-    var btn   = document.getElementById('btnColorCode');
-    btn.disabled = true; ccStatus.textContent = 'Coloring…'; ccStatus.className = 'status';
-
-    safeEvalScript(
-        '(function(){' +
-            'var SEQ_COL=16,CAM_COL=5;var BIN_COLS=[8,3,7,6,12,4,14,11];' +
-            'var seqCount=0,camCount=0,binCount=0;' +
-            'function colorSeqs(item){if(!item.children)return;' +
-                'for(var i=0;i<item.children.numItems;i++){var c=item.children[i];' +
-                    'if(c.type===2){colorSeqs(c);continue;}var nm=c.name;' +
-                    'var isWC=(nm.length>=7&&nm.substr(0,7)==="webcam_");' +
-                    'try{c.label=isWC?CAM_COL:SEQ_COL;if(isWC)camCount++;else seqCount++;}catch(e){}}}' +
-            'colorSeqs(app.project.rootItem);' +
-            'function findBin(parent,name){if(!parent.children)return null;' +
-                'for(var i=0;i<parent.children.numItems;i++){var c=parent.children[i];' +
-                    'if(c.type===2&&c.name===name)return c;' +
-                    'if(c.type===2){var r=findBin(c,name);if(r)return r;}}return null;}' +
-            'var course=findBin(app.project.rootItem,"03_Course");' +
-            'if(course){for(var i=0;i<course.children.numItems;i++){var child=course.children[i];' +
-                'if(child.type===2){try{child.label=BIN_COLS[binCount%BIN_COLS.length];binCount++;}catch(e){}}}}' +
-            'return "ok: seqs="+seqCount+" webcam="+camCount+" bins="+binCount+(course?"":" (03_Course not found)");' +
-        '})()',
-        function (res) {
-            btn.disabled = false;
-            var ok = res && res.indexOf('ok:') === 0;
-            ccStatus.textContent = ok ? res : ('ERROR: ' + res);
-            ccStatus.className   = 'status ' + (ok ? 'success' : 'error');
-            logEl.textContent    = '[ColorCode]\n' + res + '\n';
-            logEl.scrollTop      = logEl.scrollHeight;
-        }
-    );
-});
 
 })(); // end panel IIFE
