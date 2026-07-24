@@ -1,5 +1,5 @@
 /**
- * Course Builder v106 – Premiere Pro ExtendScript
+ * Course Builder v107 – Premiere Pro ExtendScript
  *
  * ── CHANGELOG ────────────────────────────────────────────────────────────────
  *
@@ -1870,7 +1870,7 @@
 
     /* ══ MAIN ════════════════════════════════════════════════════════════ */
     if(!app||!app.project){ alert('Abre un proyecto primero.'); return; }
-    log('=== Course Builder v106 ===');
+    log('=== Course Builder v107 ===');
     log('LOG: '+LOG_FILE);
     saveLog();
     try{ app.enableQE(); log('QE: enabled'); }catch(e){ log('QE FAIL: '+e.message); }
@@ -2052,9 +2052,9 @@
                 if(shouldSkipFolder(cfName)){ log('  → carpeta marcada para omitir, skip'); continue; }
                 /* Skip chapters that already have a sequence in the project */
                 if(seqExists(cfName)){ log('  → secuencia ya existe, skip'); continue; }
-                var cBin=getOrCreateBin(chapBin,cfName);
                 var vids2=getVideos(cf);
                 if(!vids2.length){ log('  skip (sin vídeos)'); continue; }
+                var cBin=getOrCreateBin(chapBin,cfName);
                 var paths2=[]; for(var fii=0;fii<vids2.length;fii++) paths2.push(vids2[fii].fsName);
                 var clips2=importFilesToBin(paths2,cBin);
                 buildSequence(clips2,tmplInfo,testSeq,cfName,cBin,_firstSeq,presetPath);
