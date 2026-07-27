@@ -1,5 +1,5 @@
 /**
- * Course Builder v108 – Premiere Pro ExtendScript
+ * Course Builder v109 – Premiere Pro ExtendScript
  *
  * ── CHANGELOG ────────────────────────────────────────────────────────────────
  *
@@ -67,6 +67,14 @@
  *   - findAndAddWav is now always called when a base path exists (wavPathC);
  *     its return value (true/false) determines whether the mp4 audio fallback
  *     is used.
+ *
+ * v109  Fix V1 nested motion position (inner clip stale reference)
+ *   - After overwriteClip inserts wClone into chapter V2, wmOut.clip (obtained
+ *     before that call) becomes a stale/remapped reference and resolves to c2
+ *     (the outer clip). The reintento was applying webcamMotionSaved (1204px)
+ *     to c2 instead of to the inner V1 clip.
+ *   - Fix: re-fetch wClone.videoTracks[0].clips[0] fresh inside the reintento
+ *     block, after activating wClone. Falls back to wmOut.clip if V1 is empty.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  */
@@ -1677,13 +1685,21 @@
                    cuando la nested era la secuencia activa durante el primer intento.
                    Reintentar ahora que el nested ya está insertado en la secuencia
                    del capítulo y esa secuencia es la activa. */
-                if(nestedOk&&wmOut.clip&&wmOut.motion&&wClone){
+                if(nestedOk&&wmOut.motion&&wClone){
                     var _wmHas=false; for(var _wmk2 in wmOut.motion){ _wmHas=true; break; }
                     if(_wmHas){
                         try{ app.project.activeSequence=wClone; }catch(e){}
                         $.sleep(300);
                         log('  Motion V1 (reintento post-insert, seq=webcam):');
-                        applyMotionSaved(wmOut.motion,wmOut.clip,getSeqDims());
+                        /* Re-fetch fresh inner clip — wmOut.clip is stale after
+                           overwriteClip inserts wClone into the chapter V2 track. */
+                        var _freshV1=null;
+                        try{ var _wvt0=wClone.videoTracks[0]; if(_wvt0&&_wvt0.clips.numItems>0) _freshV1=_wvt0.clips[0]; }catch(e){}
+                        var _applyClip=_freshV1||(wmOut.clip||null);
+                        if(_applyClip){
+                            log('    clip: "'+(_applyClip.projectItem?_applyClip.projectItem.name:'?')+'"'+(_freshV1?' (fresh)':' (fallback wmOut.clip)'));
+                            applyMotionSaved(wmOut.motion,_applyClip,getSeqDims());
+                        } else { log('    WARN: no clip encontrado para aplicar Motion V1'); }
                         try{ app.project.activeSequence=seq; }catch(e){}
                     }
                 }
@@ -1871,7 +1887,7 @@
 
     /* ══ MAIN ════════════════════════════════════════════════════════════ */
     if(!app||!app.project){ alert('Abre un proyecto primero.'); return; }
-    log('=== Course Builder v108 ===');
+    log('=== Course Builder v109 ===');
     log('LOG: '+LOG_FILE);
     saveLog();
     try{ app.enableQE(); log('QE: enabled'); }catch(e){ log('QE FAIL: '+e.message); }
