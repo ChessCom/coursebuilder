@@ -1,5 +1,5 @@
 /**
- * Course Builder v107 – Premiere Pro ExtendScript
+ * Course Builder v108 – Premiere Pro ExtendScript
  *
  * ── CHANGELOG ────────────────────────────────────────────────────────────────
  *
@@ -1677,13 +1677,14 @@
                    cuando la nested era la secuencia activa durante el primer intento.
                    Reintentar ahora que el nested ya está insertado en la secuencia
                    del capítulo y esa secuencia es la activa. */
-                if(nestedOk&&wmOut.clip&&wmOut.motion){
+                if(nestedOk&&wmOut.clip&&wmOut.motion&&wClone){
                     var _wmHas=false; for(var _wmk2 in wmOut.motion){ _wmHas=true; break; }
                     if(_wmHas){
-                        try{ app.project.activeSequence=seq; }catch(e){}
+                        try{ app.project.activeSequence=wClone; }catch(e){}
                         $.sleep(300);
-                        log('  Motion V1 (reintento post-insert, seq=capítulo):');
+                        log('  Motion V1 (reintento post-insert, seq=webcam):');
                         applyMotionSaved(wmOut.motion,wmOut.clip,getSeqDims());
+                        try{ app.project.activeSequence=seq; }catch(e){}
                     }
                 }
                 usedNested.push(nestedOk);
@@ -1870,7 +1871,7 @@
 
     /* ══ MAIN ════════════════════════════════════════════════════════════ */
     if(!app||!app.project){ alert('Abre un proyecto primero.'); return; }
-    log('=== Course Builder v107 ===');
+    log('=== Course Builder v108 ===');
     log('LOG: '+LOG_FILE);
     saveLog();
     try{ app.enableQE(); log('QE: enabled'); }catch(e){ log('QE FAIL: '+e.message); }
