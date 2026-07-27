@@ -1,5 +1,5 @@
 /**
- * Course Builder v109 – Premiere Pro ExtendScript
+ * Course Builder v110 – Premiere Pro ExtendScript
  *
  * ── CHANGELOG ────────────────────────────────────────────────────────────────
  *
@@ -67,6 +67,13 @@
  *   - findAndAddWav is now always called when a base path exists (wavPathC);
  *     its return value (true/false) determines whether the mp4 audio fallback
  *     is used.
+ *
+ * v110  Fix V1 truncated when audio has offset (no-WAV path)
+ *   - overwriteClip(mp4, detectedOffset) on A1 causes PP to also insert the
+ *     linked video on V1 at detectedOffset, truncating the original clip there.
+ *     The cleanup removes the new clip but leaves V1 ending at detectedOffset.
+ *   - Fix: after all audio handling, detect if V1 was truncated (ends before
+ *     newEndSec) and restore its end to the full chapter duration.
  *
  * v109  Fix V1 nested motion position (inner clip stale reference)
  *   - After overwriteClip inserts wClone into chapter V2, wmOut.clip (obtained
@@ -1425,6 +1432,22 @@
             }
         }
 
+        /* Restaurar V1 si PP lo truncó al insertar el audio.
+           overwriteClip(mp4, detectedOffset) en A1 también inserta el linked video
+           en V1 a partir de detectedOffset, recortando el clip original allí.
+           El cleanup elimina el clip sobrante pero deja V1 terminando en detectedOffset. */
+        try{
+            var _rVT=cloneSeq.videoTracks[tgtIdx];
+            if(_rVT&&_rVT.clips.numItems>0){
+                var _rVC=_rVT.clips[0];
+                if(_rVC&&Math.abs(_rVC.start.seconds)<0.1&&_rVC.end.seconds<newEndSec-0.1){
+                    log('  V'+(tgtIdx+1)+': truncado a '+_rVC.end.seconds.toFixed(2)+'s → restaurando a '+newEndSec.toFixed(2)+'s');
+                    try{ _rVC.end=makeTime(newEndSec); log('  V'+(tgtIdx+1)+' restaurado: '+_rVC.end.seconds.toFixed(2)+'s'); }
+                    catch(_rVE2){ log('  V'+(tgtIdx+1)+' restaurar FAIL: '+_rVE2.message); }
+                }
+            }
+        }catch(_rVE){}
+
         /* Extender las OTRAS pistas (BG image, adjustment layers…) a la nueva duración.
            También moverlas a position 0 si están desplazadas: si un clip de otra pista
            empieza en e.g. 152s, PP usa ese offset al insertar el nested en la secuencia
@@ -1887,7 +1910,7 @@
 
     /* ══ MAIN ════════════════════════════════════════════════════════════ */
     if(!app||!app.project){ alert('Abre un proyecto primero.'); return; }
-    log('=== Course Builder v109 ===');
+    log('=== Course Builder v110 ===');
     log('LOG: '+LOG_FILE);
     saveLog();
     try{ app.enableQE(); log('QE: enabled'); }catch(e){ log('QE FAIL: '+e.message); }
