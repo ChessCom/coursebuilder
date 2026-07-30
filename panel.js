@@ -1,4 +1,4 @@
-/* Course Builder Panel v110.20 — https://github.com/raulmartinezchessable/course-builder */
+/* Course Builder Panel v110.20 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
@@ -131,7 +131,7 @@ function setScriptStatus(text, state) {
 }
 
 /* ── Download from GitHub (follows redirects) ───────────────────────────── */
-var GH_BASE = 'https://raw.githubusercontent.com/raulmartinezchessable/course-builder/main/';
+var GH_BASE = 'https://raw.githubusercontent.com/ChessCom/coursebuilder/main/';
 var JSX_URL = GH_BASE + 'course_builder.jsx';
 function jsxUrl() { return JSX_URL + '?t=' + Date.now(); }
 
