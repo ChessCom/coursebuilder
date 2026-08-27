@@ -1243,6 +1243,11 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
     function luR(v) { return Math.round(v * 100) / 100; }
 
+    function luLog(msg) {
+        var el = document.getElementById('log');
+        if (el) { el.textContent = '[LU] ' + msg + (el.textContent !== '(no log)' ? '\n' + el.textContent : ''); }
+    }
+
     function luInfoText(state) {
         if (!state.before) return '-';
         var t = 'V' + (state.trackIdx + 1) + ' | ' + state.name + '\n';
@@ -1257,51 +1262,56 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         return t;
     }
 
-    /* isSelected helper — tries both the method and the property */
-    var LU_ISSEL = 'function isSel(cl){' +
-        'try{if(typeof cl.isSelected==="function")return cl.isSelected();}catch(e){}' +
-        'try{return !!cl.selected;}catch(e2){}return false;}';
-
-    /* Property-name matcher — works for English and Spanish PP */
-    var LU_ISPOS   = 'function isPos(n){return n.indexOf("Position")===0||n.indexOf("Posici")===0;}';
-    var LU_ISSCALE = 'function isSc(n){return n.indexOf("Scale")===0||n.indexOf("Escala")===0;}';
-
-    var LU_CAP_JSX = '(function(){' +
-        LU_ISSEL + LU_ISPOS + LU_ISSCALE +
-        'var seq=app.project.activeSequence;if(!seq)return "ERR: no active sequence";' +
-        'var sel=null,trkIdx=-1;' +
-        'for(var vi=0;vi<seq.videoTracks.numTracks;vi++){var vt=seq.videoTracks[vi];' +
-            'for(var ci=0;ci<vt.clips.numItems;ci++){if(isSel(vt.clips[ci])){sel=vt.clips[ci];trkIdx=vi;break;}}' +
-            'if(sel)break;}' +
-        'if(!sel)return "ERR: no clip selected in timeline";' +
+    /* Capture: whole body in try/catch so we always get a string back, never EvalScript error */
+    var LU_CAP_JSX = '(function(){try{' +
+        'var seq=app.project.activeSequence;' +
+        'if(!seq)return "ERR: no active sequence";' +
+        'var sel=null,ti=-1;' +
+        'for(var vi=0;vi<seq.videoTracks.numTracks;vi++){' +
+            'var vt=seq.videoTracks[vi];' +
+            'for(var ci=0;ci<vt.clips.numItems;ci++){' +
+                'var c2=vt.clips[ci];var ok=false;' +
+                'try{ok=c2.isSelected();}catch(e1){}' +
+                'if(!ok)try{ok=(c2.selected===true);}catch(e2){}' +
+                'if(ok){sel=c2;ti=vi;break;}' +
+            '}' +
+            'if(sel)break;' +
+        '}' +
+        'if(!sel)return "ERR: no clip selected";' +
         'var nm=sel.projectItem?sel.projectItem.name:"?";' +
-        'var pos={x:960,y:540},scl=100;' +
-        'try{var mc=sel.getComponentByDisplayName("Motion");if(!mc)mc=sel.getComponentByDisplayName("Movimiento");' +
-            'if(mc){for(var pi=0;pi<mc.properties.numItems;pi++){var p=mc.properties[pi],pn=p.displayName;' +
-                'if(isPos(pn)){var v=p.getValue();pos={x:v[0],y:v[1]};}' +
-                'if(isSc(pn)){scl=p.getValue();}}}}catch(e){}' +
-        'return JSON.stringify({name:nm,trkIdx:trkIdx,pos:pos,scl:scl});' +
-    '})()';
+        'var px=960,py=540,sc=100;' +
+        'try{' +
+            'var mc=sel.getComponentByDisplayName("Motion");' +
+            'if(!mc)mc=sel.getComponentByDisplayName("Movimiento");' +
+            'if(mc){for(var pi=0;pi<mc.properties.numItems;pi++){' +
+                'var p=mc.properties[pi],pn=p.displayName;' +
+                'if(pn.indexOf("Pos")===0){var pv=p.getValue();px=pv[0];py=pv[1];}' +
+                'if(pn.indexOf("Scale")===0||pn.indexOf("Esca")===0){sc=p.getValue();}' +
+            '}}' +
+        '}catch(em){}' +
+        'return JSON.stringify({n:nm,t:ti,x:px,y:py,s:sc});' +
+    '}catch(e){return "ERR: "+e.message;}})()';
 
     function luCapture(which, step) {
         var infoId = which === 'autor' ? 'luAutorInfo' : 'luTbInfo';
         safeEvalScript(LU_CAP_JSX, function (res) {
+            luLog('capture(' + which + ' step' + step + '): ' + res);
             try {
                 var d = JSON.parse(res);
                 var st = luState[which];
                 if (step === 1) {
-                    st.before   = { pos: d.pos, scl: d.scl };
+                    st.before   = { pos: { x: d.x, y: d.y }, scl: d.s };
                     st.after    = null;
                     st.delta    = null;
-                    st.trackIdx = d.trkIdx;
-                    st.name     = d.name;
+                    st.trackIdx = d.t;
+                    st.name     = d.n;
                 } else {
-                    st.after = { pos: d.pos, scl: d.scl };
+                    st.after = { pos: { x: d.x, y: d.y }, scl: d.s };
                     if (st.before) {
                         st.delta = {
-                            dx: d.pos.x - st.before.pos.x,
-                            dy: d.pos.y - st.before.pos.y,
-                            ds: d.scl   - st.before.scl
+                            dx: d.x - st.before.pos.x,
+                            dy: d.y - st.before.pos.y,
+                            ds: d.s - st.before.scl
                         };
                     }
                 }
@@ -1319,9 +1329,10 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
     document.getElementById('luBgSel').addEventListener('click', function () {
         safeEvalScript(
-            '(function(){var f=File.openDialog("Select background","Video files:*.mp4;*.mov;*.png;*.jpg",false);return f?f.fsName:"cancelled";})();',
+            '(function(){try{var f=File.openDialog("Select background","Video files:*.mp4;*.mov;*.png;*.jpg",false);return f?f.fsName:"cancelled";}catch(e){return "ERR: "+e.message;}})();',
             function (res) {
-                if (!res || res === 'cancelled') return;
+                luLog('bg: ' + res);
+                if (!res || res === 'cancelled' || res.indexOf('ERR') === 0) return;
                 luState.fondo.path = res;
                 try { localStorage.setItem('lu_bg_path', res); } catch(e) {}
                 document.getElementById('luBgInfo').textContent = res.split('/').pop() || res;
@@ -1331,13 +1342,21 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
     document.getElementById('luDelMark').addEventListener('click', function () {
         safeEvalScript(
-            '(function(){' + LU_ISSEL +
+            '(function(){try{' +
             'var seq=app.project.activeSequence;if(!seq)return "ERR: no sequence";var names=[];' +
-            'for(var vi=0;vi<seq.videoTracks.numTracks;vi++){var vt=seq.videoTracks[vi];' +
-                'for(var ci=0;ci<vt.clips.numItems;ci++){var cl=vt.clips[ci];' +
-                    'if(isSel(cl)&&cl.projectItem)names.push(cl.projectItem.name);}}' +
-            'return JSON.stringify(names);})()',
+            'for(var vi=0;vi<seq.videoTracks.numTracks;vi++){' +
+                'var vt=seq.videoTracks[vi];' +
+                'for(var ci=0;ci<vt.clips.numItems;ci++){' +
+                    'var c2=vt.clips[ci];var ok=false;' +
+                    'try{ok=c2.isSelected();}catch(e1){}' +
+                    'if(!ok)try{ok=(c2.selected===true);}catch(e2){}' +
+                    'if(ok&&c2.projectItem)names.push(c2.projectItem.name);' +
+                '}' +
+            '}' +
+            'return JSON.stringify(names);' +
+            '}catch(e){return "ERR: "+e.message;}})()',
             function (res) {
+                luLog('mark: ' + res);
                 try {
                     var arr = JSON.parse(res);
                     for (var i = 0; i < arr.length; i++) {
@@ -1359,9 +1378,10 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
     document.getElementById('luExportDir').addEventListener('click', function () {
         safeEvalScript(
-            '(function(){var f=Folder.selectDialog("Output folder");return f?f.fsName:"cancelled";})();',
+            '(function(){try{var f=Folder.selectDialog("Output folder");return f?f.fsName:"cancelled";}catch(e){return "ERR: "+e.message;}})();',
             function (res) {
-                if (!res || res === 'cancelled') return;
+                luLog('exportDir: ' + res);
+                if (!res || res === 'cancelled' || res.indexOf('ERR') === 0) return;
                 luState.exportDir = res;
                 try { localStorage.setItem('lu_export_dir', res); } catch(e) {}
                 document.getElementById('luExportInfo').textContent = res.split('/').pop() || res;
@@ -1375,7 +1395,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         var delJson = JSON.stringify(luState.toDelete);
         var bgPath  = (luState.fondo.path || '').replace(/\\/g, '/').replace(/"/g, '\\"');
 
-        var jsx = '(function(){' + LU_ISPOS + LU_ISSCALE + 'var results=[];var seqs=[];';
+        var jsx = '(function(){try{var results=[];var seqs=[];';
 
         if (singleSeq) {
             jsx += 'var _as=app.project.activeSequence;if(_as)seqs.push(_as);';
@@ -1404,39 +1424,41 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         jsx += 'function applyMot(clip,px,py,sc){' +
             'try{var mc=clip.getComponentByDisplayName("Motion");if(!mc)mc=clip.getComponentByDisplayName("Movimiento");if(!mc)return;' +
             'for(var _pi=0;_pi<mc.properties.numItems;_pi++){var _p=mc.properties[_pi],_pn=_p.displayName;' +
-                'if(isPos(_pn)){try{_p.setValue([px,py],true);}catch(e){}}' +
-                'if(isSc(_pn)){try{_p.setValue(sc,true);}catch(e){}}}' +
-            '}catch(e){results.push("motERR:"+e.message);}}';
+                'if(_pn.indexOf("Pos")===0){try{_p.setValue([px,py],true);}catch(_pe){}}' +
+                'if(_pn.indexOf("Scale")===0||_pn.indexOf("Esca")===0){try{_p.setValue(sc,true);}catch(_se){}}}' +
+            '}catch(_me){results.push("motERR:"+_me.message);}}';
 
         jsx += 'for(var _si=0;_si<seqs.length;_si++){var seq=seqs[_si];if(!seq)continue;results.push("---"+seq.name);';
 
         if (a.delta) {
             jsx += 'if(' + a.trackIdx + '<seq.videoTracks.numTracks){var _aTrk=seq.videoTracks[' + a.trackIdx + '];' +
                 'for(var _ai=0;_ai<_aTrk.clips.numItems;_ai++){var _ac=_aTrk.clips[_ai];if(!_ac.projectItem)continue;' +
-                    'var _amc=_ac.getComponentByDisplayName("Motion");if(!_amc)_amc=_ac.getComponentByDisplayName("Movimiento");if(!_amc)continue;' +
+                    'try{var _amc=_ac.getComponentByDisplayName("Motion");if(!_amc)_amc=_ac.getComponentByDisplayName("Movimiento");if(!_amc)continue;' +
                     'var _ax=960,_ay=540,_asc=100;' +
-                    'for(var _api=0;_api<_amc.properties.numItems;_api++){var _ap=_amc.properties[_api];' +
-                        'if(isPos(_ap.displayName)){var _av=_ap.getValue();_ax=_av[0];_ay=_av[1];}' +
-                        'if(isSc(_ap.displayName))_asc=_ap.getValue();}' +
+                    'for(var _api=0;_api<_amc.properties.numItems;_api++){var _ap=_amc.properties[_api],_apn=_ap.displayName;' +
+                        'if(_apn.indexOf("Pos")===0){var _av=_ap.getValue();_ax=_av[0];_ay=_av[1];}' +
+                        'if(_apn.indexOf("Scale")===0||_apn.indexOf("Esca")===0)_asc=_ap.getValue();}' +
                     'applyMot(_ac,_ax+(' + luR(a.delta.dx) + '),_ay+(' + luR(a.delta.dy) + '),_asc+(' + luR(a.delta.ds) + '));' +
-                    'results.push("author[V' + (a.trackIdx + 1) + '] "+_ac.projectItem.name' +
-                        '+" -> "+(_ax+(' + luR(a.delta.dx) + ')).toFixed(0)+","+(_ay+(' + luR(a.delta.dy) + ')).toFixed(0)' +
-                        '+" "+(_asc+(' + luR(a.delta.ds) + ')).toFixed(1)+"%");' +
+                    'results.push("author[V' + (a.trackIdx + 1) + ']:"+_ac.projectItem.name' +
+                        '+":"+(_ax+(' + luR(a.delta.dx) + ')).toFixed(0)+","+(_ay+(' + luR(a.delta.dy) + ')).toFixed(0)' +
+                        +'+"  "+(_asc+(' + luR(a.delta.ds) + ')).toFixed(1)+"%");' +
+                    '}catch(_ae){results.push("authorERR:"+_ae.message);}' +
                 '}}';
         }
 
         if (tb.delta) {
             jsx += 'if(' + tb.trackIdx + '<seq.videoTracks.numTracks){var _tTrk=seq.videoTracks[' + tb.trackIdx + '];' +
                 'for(var _ti=0;_ti<_tTrk.clips.numItems;_ti++){var _tc=_tTrk.clips[_ti];if(!_tc.projectItem)continue;' +
-                    'var _tmc=_tc.getComponentByDisplayName("Motion");if(!_tmc)_tmc=_tc.getComponentByDisplayName("Movimiento");if(!_tmc)continue;' +
+                    'try{var _tmc=_tc.getComponentByDisplayName("Motion");if(!_tmc)_tmc=_tc.getComponentByDisplayName("Movimiento");if(!_tmc)continue;' +
                     'var _tx=960,_ty=540,_tsc=100;' +
-                    'for(var _tpi=0;_tpi<_tmc.properties.numItems;_tpi++){var _tp=_tmc.properties[_tpi];' +
-                        'if(isPos(_tp.displayName)){var _tv=_tp.getValue();_tx=_tv[0];_ty=_tv[1];}' +
-                        'if(isSc(_tp.displayName))_tsc=_tp.getValue();}' +
+                    'for(var _tpi=0;_tpi<_tmc.properties.numItems;_tpi++){var _tp=_tmc.properties[_tpi],_tpn=_tp.displayName;' +
+                        'if(_tpn.indexOf("Pos")===0){var _tv=_tp.getValue();_tx=_tv[0];_ty=_tv[1];}' +
+                        'if(_tpn.indexOf("Scale")===0||_tpn.indexOf("Esca")===0)_tsc=_tp.getValue();}' +
                     'applyMot(_tc,_tx+(' + luR(tb.delta.dx) + '),_ty+(' + luR(tb.delta.dy) + '),_tsc+(' + luR(tb.delta.ds) + '));' +
-                    'results.push("board[V' + (tb.trackIdx + 1) + '] "+_tc.projectItem.name' +
-                        '+" -> "+(_tx+(' + luR(tb.delta.dx) + ')).toFixed(0)+","+(_ty+(' + luR(tb.delta.dy) + ')).toFixed(0)' +
-                        '+" "+(_tsc+(' + luR(tb.delta.ds) + ')).toFixed(1)+"%");' +
+                    'results.push("board[V' + (tb.trackIdx + 1) + ']:"+_tc.projectItem.name' +
+                        '+":"+(_tx+(' + luR(tb.delta.dx) + ')).toFixed(0)+","+(_ty+(' + luR(tb.delta.dy) + ')).toFixed(0)' +
+                        +'+"  "+(_tsc+(' + luR(tb.delta.ds) + ')).toFixed(1)+"%");' +
+                    '}catch(_te){results.push("boardERR:"+_te.message);}' +
                 '}}';
         }
 
@@ -1453,16 +1475,16 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 'for(var _brci=_bgTrk.clips.numItems-1;_brci>=0;_brci--){try{_bgTrk.clips[_brci].remove(false,false);}catch(e){}}' +
                 'try{var _bgT=new Time();_bgT.seconds=0;_bgTrk.overwriteClip(bgItem,_bgT);' +
                     'var _bgC=_bgTrk.clips[0];if(_bgC){var _bgEnd=new Time();_bgEnd.seconds=seq.end.seconds;try{_bgC.end=_bgEnd;}catch(e){}}' +
-                    'results.push("bg replaced in V1");}catch(e){results.push("bgERR:"+e.message);}}';
+                    'results.push("bg:replaced V1");}catch(e){results.push("bgERR:"+e.message);}}';
         }
 
-        jsx += '}return "ok|"+results.join("|");})()';
+        jsx += '}return "ok|"+results.join("|");}catch(e){return "ERR: "+e.message;}})()';
         return jsx;
     }
 
     function luRun(singleSeq) {
         var luStatus = document.getElementById('luStatus');
-        var luLog    = document.getElementById('luLog');
+        var luLogEl  = document.getElementById('luLog');
         var btnTest  = document.getElementById('luBtnTest');
         var btnRun   = document.getElementById('luBtnRun');
 
@@ -1478,7 +1500,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         btnRun.disabled  = true;
         luStatus.textContent = singleSeq ? 'Applying to active chapter...' : 'Applying to full course...';
         luStatus.className   = 'status running';
-        luLog.style.display  = 'none';
+        luLogEl.style.display = 'none';
 
         safeEvalScript(luBuildApplyJSX(singleSeq), function (res) {
             btnTest.disabled = false;
@@ -1486,8 +1508,9 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
             var ok = res && res.indexOf('ok|') === 0;
             luStatus.textContent = ok ? 'Done' : ('ERROR: ' + (res || 'no response'));
             luStatus.className   = 'status ' + (ok ? 'done' : 'error');
-            luLog.textContent    = (res || '').replace(/\|/g, '\n');
-            luLog.style.display  = 'block';
+            luLogEl.textContent  = (res || '').replace(/\|/g, '\n');
+            luLogEl.style.display = 'block';
+            luLog((singleSeq ? 'test' : 'apply') + ': ' + res);
         });
     }
 
@@ -1498,7 +1521,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
     document.getElementById('luBtnExport').addEventListener('click', function () {
         var luStatus = document.getElementById('luStatus');
-        var luLog    = document.getElementById('luLog');
+        var luLogEl  = document.getElementById('luLog');
         if (!luState.exportDir) {
             luStatus.textContent = 'Select output folder first.';
             luStatus.className   = 'status error';
@@ -1513,7 +1536,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         var presetPath = LU_PRESET.replace(/"/g, '\\"');
 
         safeEvalScript(
-            '(function(){var results=[];' +
+            '(function(){try{var results=[];' +
             'var presetPath="' + presetPath + '";var exportDir="' + exportDir + '";var seqs=[];' +
             'function collectSeqs(item,arr){' +
                 'try{var s=item.getSequence();if(s){var nm=item.name.toLowerCase();' +
@@ -1525,17 +1548,18 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 'var safeName=seq.name.replace(/[\\/\\\\:*?"<>|]/g,"_");' +
                 'var outPath=exportDir+"/"+safeName+".mp4";' +
                 'try{app.encoder.launchAndEncode(seq,outPath,presetPath,0,false);results.push("queued: "+seq.name);}' +
-                'catch(e){results.push("ERR "+seq.name+": "+e.message);}}' +
+                'catch(e){results.push("ERR:"+seq.name+":"+e.message);}}' +
             'return "ok|"+results.length+" sequences queued|"+results.join("|");' +
-            '})()',
+            '}catch(e){return "ERR: "+e.message;}})()',
             function (res) {
                 btn.disabled = false;
                 var ok = res && res.indexOf('ok|') === 0;
                 var parts = ok ? res.split('|') : null;
                 luStatus.textContent = ok ? (parts[1] || 'Done') : ('ERROR: ' + (res || 'no response'));
                 luStatus.className   = 'status ' + (ok ? 'done' : 'error');
-                luLog.textContent    = (res || '').replace(/\|/g, '\n');
-                luLog.style.display  = 'block';
+                luLogEl.textContent  = (res || '').replace(/\|/g, '\n');
+                luLogEl.style.display = 'block';
+                luLog('export: ' + res);
             }
         );
     });
