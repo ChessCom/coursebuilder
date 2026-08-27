@@ -74,49 +74,49 @@ document.getElementById('app').innerHTML = [
     '<div class="tool-divider">Legacy Updater <span class="tool-ver">v1</span></div>',
     '<div class="section">',
     '  <div class="lu-card">',
-    '    <div class="lu-card-title">Autor</div>',
+    '    <div class="lu-card-title">Author</div>',
     '    <div class="lu-row">',
-    '      <button class="btn-small" id="luAutorCap1">&#9312; Capturar inicial</button>',
-    '      <button class="btn-small" id="luAutorCap2">&#9313; Capturar nueva</button>',
+    '      <button class="btn-small" id="luAutorCap1">&#9312; Capture initial</button>',
+    '      <button class="btn-small" id="luAutorCap2">&#9313; Capture new pos.</button>',
     '    </div>',
     '    <div class="lu-info" id="luAutorInfo">&mdash;</div>',
     '  </div>',
     '  <div class="lu-card">',
-    '    <div class="lu-card-title">Tablero</div>',
+    '    <div class="lu-card-title">Board</div>',
     '    <div class="lu-row">',
-    '      <button class="btn-small" id="luTbCap1">&#9312; Capturar inicial</button>',
-    '      <button class="btn-small" id="luTbCap2">&#9313; Capturar nueva</button>',
+    '      <button class="btn-small" id="luTbCap1">&#9312; Capture initial</button>',
+    '      <button class="btn-small" id="luTbCap2">&#9313; Capture new pos.</button>',
     '    </div>',
     '    <div class="lu-info" id="luTbInfo">&mdash;</div>',
     '  </div>',
     '  <div class="lu-card">',
-    '    <div class="lu-card-title">Fondo</div>',
+    '    <div class="lu-card-title">Background</div>',
     '    <div class="lu-row">',
-    '      <button class="btn-small" id="luBgSel">Buscar archivo...</button>',
+    '      <button class="btn-small" id="luBgSel">Browse file...</button>',
     '    </div>',
     '    <div class="lu-info" id="luBgInfo">&mdash;</div>',
     '  </div>',
     '  <div class="lu-card">',
-    '    <div class="lu-card-title">Borrar clips</div>',
+    '    <div class="lu-card-title">Delete clips</div>',
     '    <div class="lu-row">',
-    '      <button class="btn-small" id="luDelMark">Marcar selecci&oacute;n</button>',
-    '      <button class="btn-small" id="luDelClear">Limpiar</button>',
+    '      <button class="btn-small" id="luDelMark">Mark selection</button>',
+    '      <button class="btn-small" id="luDelClear">Clear</button>',
     '    </div>',
     '    <div class="lu-info" id="luDelInfo">&mdash;</div>',
     '  </div>',
     '  <div class="lu-row" style="margin-top:4px">',
-    '    <button class="btn-lu-run" id="luBtnTest">&#9654; Probar (cap&iacute;tulo)</button>',
-    '    <button class="btn-lu-run" id="luBtnRun">&#9654;&#9654; Aplicar al curso</button>',
+    '    <button class="btn-lu-run" id="luBtnTest">&#9654; Test (chapter)</button>',
+    '    <button class="btn-lu-run" id="luBtnRun">&#9654;&#9654; Apply to course</button>',
     '  </div>',
     '  <div class="status" id="luStatus"></div>',
     '  <div class="lu-log" id="luLog" style="display:none"></div>',
     '  <div class="lu-card" style="margin-top:6px">',
-    '    <div class="lu-card-title">Exportar</div>',
+    '    <div class="lu-card-title">Export</div>',
     '    <div class="lu-row">',
-    '      <button class="btn-small" id="luExportDir">Carpeta destino...</button>',
+    '      <button class="btn-small" id="luExportDir">Output folder...</button>',
     '    </div>',
     '    <div class="lu-info" id="luExportInfo">&mdash;</div>',
-    '    <button class="btn-at" style="margin-top:6px;width:100%" id="luBtnExport">&#128228; Enviar a Media Encoder</button>',
+    '    <button class="btn-at" style="margin-top:6px;width:100%" id="luBtnExport">&#128228; Send to Media Encoder</button>',
     '  </div>',
     '</div>',
     '<div class="log-header">',
@@ -1244,41 +1244,48 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
     function luR(v) { return Math.round(v * 100) / 100; }
 
     function luInfoText(state) {
-        if (!state.before) return '—';
-        var t = 'V' + (state.trackIdx + 1) + ' » ' + state.name + '\n';
-        t += 'Antes:   ' + luR(state.before.pos.x) + ', ' + luR(state.before.pos.y) + '  ' + luR(state.before.scl) + '%';
+        if (!state.before) return '-';
+        var t = 'V' + (state.trackIdx + 1) + ' | ' + state.name + '\n';
+        t += 'Before:  ' + luR(state.before.pos.x) + ', ' + luR(state.before.pos.y) + '  ' + luR(state.before.scl) + '%';
         if (state.after) {
-            t += '\nDespués: ' + luR(state.after.pos.x) + ', ' + luR(state.after.pos.y) + '  ' + luR(state.after.scl) + '%';
+            t += '\nAfter:   ' + luR(state.after.pos.x) + ', ' + luR(state.after.pos.y) + '  ' + luR(state.after.scl) + '%';
             if (state.delta) {
                 var dx = luR(state.delta.dx), dy = luR(state.delta.dy), ds = luR(state.delta.ds);
-                t += '\nΔ: (' + (dx >= 0 ? '+' : '') + dx + ', ' + (dy >= 0 ? '+' : '') + dy + ')  scl ' + (ds >= 0 ? '+' : '') + ds + '%';
+                t += '\nDelta: (' + (dx >= 0 ? '+' : '') + dx + ', ' + (dy >= 0 ? '+' : '') + dy + ')  scl ' + (ds >= 0 ? '+' : '') + ds + '%';
             }
         }
         return t;
     }
 
+    /* isSelected helper — tries both the method and the property */
+    var LU_ISSEL = 'function isSel(cl){' +
+        'try{if(typeof cl.isSelected==="function")return cl.isSelected();}catch(e){}' +
+        'try{return !!cl.selected;}catch(e2){}return false;}';
+
+    /* Property-name matcher — works for English and Spanish PP */
+    var LU_ISPOS   = 'function isPos(n){return n.indexOf("Position")===0||n.indexOf("Posici")===0;}';
+    var LU_ISSCALE = 'function isSc(n){return n.indexOf("Scale")===0||n.indexOf("Escala")===0;}';
+
     var LU_CAP_JSX = '(function(){' +
+        LU_ISSEL + LU_ISPOS + LU_ISSCALE +
         'var seq=app.project.activeSequence;if(!seq)return "ERR: no active sequence";' +
         'var sel=null,trkIdx=-1;' +
         'for(var vi=0;vi<seq.videoTracks.numTracks;vi++){var vt=seq.videoTracks[vi];' +
-            'for(var ci=0;ci<vt.clips.numItems;ci++){if(vt.clips[ci].isSelected()){sel=vt.clips[ci];trkIdx=vi;break;}}if(sel)break;}' +
+            'for(var ci=0;ci<vt.clips.numItems;ci++){if(isSel(vt.clips[ci])){sel=vt.clips[ci];trkIdx=vi;break;}}' +
+            'if(sel)break;}' +
         'if(!sel)return "ERR: no clip selected in timeline";' +
         'var nm=sel.projectItem?sel.projectItem.name:"?";' +
         'var pos={x:960,y:540},scl=100;' +
         'try{var mc=sel.getComponentByDisplayName("Motion");if(!mc)mc=sel.getComponentByDisplayName("Movimiento");' +
             'if(mc){for(var pi=0;pi<mc.properties.numItems;pi++){var p=mc.properties[pi],pn=p.displayName;' +
-                'if(pn==="Position"||pn==="Posición"){var v=p.getValue();pos={x:v[0],y:v[1]};}' +
-                'if(pn==="Scale"||pn==="Escala"){scl=p.getValue();}}}}catch(e){}' +
+                'if(isPos(pn)){var v=p.getValue();pos={x:v[0],y:v[1]};}' +
+                'if(isSc(pn)){scl=p.getValue();}}}}catch(e){}' +
         'return JSON.stringify({name:nm,trkIdx:trkIdx,pos:pos,scl:scl});' +
     '})()';
 
     function luCapture(which, step) {
         var infoId = which === 'autor' ? 'luAutorInfo' : 'luTbInfo';
         safeEvalScript(LU_CAP_JSX, function (res) {
-            if (!res || res.indexOf('ERR:') === 0) {
-                document.getElementById(infoId).textContent = res || 'sin respuesta';
-                return;
-            }
             try {
                 var d = JSON.parse(res);
                 var st = luState[which];
@@ -1300,7 +1307,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 }
                 document.getElementById(infoId).textContent = luInfoText(st);
             } catch (e) {
-                document.getElementById(infoId).textContent = 'parse ERR: ' + e.message;
+                document.getElementById(infoId).textContent = res || 'No response';
             }
         });
     }
@@ -1312,7 +1319,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
     document.getElementById('luBgSel').addEventListener('click', function () {
         safeEvalScript(
-            '(function(){var f=File.openDialog("Seleccionar fondo","Archivos de vídeo:*.mp4;*.mov;*.png;*.jpg",false);return f?f.fsName:"cancelled";})();',
+            '(function(){var f=File.openDialog("Select background","Video files:*.mp4;*.mov;*.png;*.jpg",false);return f?f.fsName:"cancelled";})();',
             function (res) {
                 if (!res || res === 'cancelled') return;
                 luState.fondo.path = res;
@@ -1324,10 +1331,11 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
     document.getElementById('luDelMark').addEventListener('click', function () {
         safeEvalScript(
-            '(function(){var seq=app.project.activeSequence;if(!seq)return "ERR: no seq";var names=[];' +
+            '(function(){' + LU_ISSEL +
+            'var seq=app.project.activeSequence;if(!seq)return "ERR: no sequence";var names=[];' +
             'for(var vi=0;vi<seq.videoTracks.numTracks;vi++){var vt=seq.videoTracks[vi];' +
                 'for(var ci=0;ci<vt.clips.numItems;ci++){var cl=vt.clips[ci];' +
-                    'if(cl.isSelected()&&cl.projectItem)names.push(cl.projectItem.name);}}' +
+                    'if(isSel(cl)&&cl.projectItem)names.push(cl.projectItem.name);}}' +
             'return JSON.stringify(names);})()',
             function (res) {
                 try {
@@ -1338,7 +1346,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     document.getElementById('luDelInfo').textContent =
                         luState.toDelete.length + ' clip(s): ' + luState.toDelete.join(', ');
                 } catch (e) {
-                    document.getElementById('luDelInfo').textContent = 'ERR: ' + (res || e.message);
+                    document.getElementById('luDelInfo').textContent = res || 'ERR';
                 }
             }
         );
@@ -1346,12 +1354,12 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
     document.getElementById('luDelClear').addEventListener('click', function () {
         luState.toDelete = [];
-        document.getElementById('luDelInfo').textContent = '—';
+        document.getElementById('luDelInfo').textContent = '-';
     });
 
     document.getElementById('luExportDir').addEventListener('click', function () {
         safeEvalScript(
-            '(function(){var f=Folder.selectDialog("Carpeta de destino");return f?f.fsName:"cancelled";})();',
+            '(function(){var f=Folder.selectDialog("Output folder");return f?f.fsName:"cancelled";})();',
             function (res) {
                 if (!res || res === 'cancelled') return;
                 luState.exportDir = res;
@@ -1367,7 +1375,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         var delJson = JSON.stringify(luState.toDelete);
         var bgPath  = (luState.fondo.path || '').replace(/\\/g, '/').replace(/"/g, '\\"');
 
-        var jsx = '(function(){var results=[];var seqs=[];';
+        var jsx = '(function(){' + LU_ISPOS + LU_ISSCALE + 'var results=[];var seqs=[];';
 
         if (singleSeq) {
             jsx += 'var _as=app.project.activeSequence;if(_as)seqs.push(_as);';
@@ -1396,8 +1404,8 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         jsx += 'function applyMot(clip,px,py,sc){' +
             'try{var mc=clip.getComponentByDisplayName("Motion");if(!mc)mc=clip.getComponentByDisplayName("Movimiento");if(!mc)return;' +
             'for(var _pi=0;_pi<mc.properties.numItems;_pi++){var _p=mc.properties[_pi],_pn=_p.displayName;' +
-                'if(_pn==="Position"||_pn==="Posición"){try{_p.setValue([px,py],true);}catch(e){}}' +
-                'if(_pn==="Scale"||_pn==="Escala"){try{_p.setValue(sc,true);}catch(e){}}}' +
+                'if(isPos(_pn)){try{_p.setValue([px,py],true);}catch(e){}}' +
+                'if(isSc(_pn)){try{_p.setValue(sc,true);}catch(e){}}}' +
             '}catch(e){results.push("motERR:"+e.message);}}';
 
         jsx += 'for(var _si=0;_si<seqs.length;_si++){var seq=seqs[_si];if(!seq)continue;results.push("---"+seq.name);';
@@ -1407,12 +1415,12 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 'for(var _ai=0;_ai<_aTrk.clips.numItems;_ai++){var _ac=_aTrk.clips[_ai];if(!_ac.projectItem)continue;' +
                     'var _amc=_ac.getComponentByDisplayName("Motion");if(!_amc)_amc=_ac.getComponentByDisplayName("Movimiento");if(!_amc)continue;' +
                     'var _ax=960,_ay=540,_asc=100;' +
-                    'for(var _api=0;_api<_amc.properties.numItems;_api++){var _ap=_amc.properties[_api],_apn=_ap.displayName;' +
-                        'if(_apn==="Position"||_apn==="Posición"){var _av=_ap.getValue();_ax=_av[0];_ay=_av[1];}' +
-                        'if(_apn==="Scale"||_apn==="Escala")_asc=_ap.getValue();}' +
+                    'for(var _api=0;_api<_amc.properties.numItems;_api++){var _ap=_amc.properties[_api];' +
+                        'if(isPos(_ap.displayName)){var _av=_ap.getValue();_ax=_av[0];_ay=_av[1];}' +
+                        'if(isSc(_ap.displayName))_asc=_ap.getValue();}' +
                     'applyMot(_ac,_ax+(' + luR(a.delta.dx) + '),_ay+(' + luR(a.delta.dy) + '),_asc+(' + luR(a.delta.ds) + '));' +
-                    'results.push("autor[V' + (a.trackIdx + 1) + '] "+_ac.projectItem.name' +
-                        '+" → "+(_ax+(' + luR(a.delta.dx) + ')).toFixed(0)+","+(_ay+(' + luR(a.delta.dy) + ')).toFixed(0)' +
+                    'results.push("author[V' + (a.trackIdx + 1) + '] "+_ac.projectItem.name' +
+                        '+" -> "+(_ax+(' + luR(a.delta.dx) + ')).toFixed(0)+","+(_ay+(' + luR(a.delta.dy) + ')).toFixed(0)' +
                         '+" "+(_asc+(' + luR(a.delta.ds) + ')).toFixed(1)+"%");' +
                 '}}';
         }
@@ -1422,12 +1430,12 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 'for(var _ti=0;_ti<_tTrk.clips.numItems;_ti++){var _tc=_tTrk.clips[_ti];if(!_tc.projectItem)continue;' +
                     'var _tmc=_tc.getComponentByDisplayName("Motion");if(!_tmc)_tmc=_tc.getComponentByDisplayName("Movimiento");if(!_tmc)continue;' +
                     'var _tx=960,_ty=540,_tsc=100;' +
-                    'for(var _tpi=0;_tpi<_tmc.properties.numItems;_tpi++){var _tp=_tmc.properties[_tpi],_tpn=_tp.displayName;' +
-                        'if(_tpn==="Position"||_tpn==="Posición"){var _tv=_tp.getValue();_tx=_tv[0];_ty=_tv[1];}' +
-                        'if(_tpn==="Scale"||_tpn==="Escala")_tsc=_tp.getValue();}' +
+                    'for(var _tpi=0;_tpi<_tmc.properties.numItems;_tpi++){var _tp=_tmc.properties[_tpi];' +
+                        'if(isPos(_tp.displayName)){var _tv=_tp.getValue();_tx=_tv[0];_ty=_tv[1];}' +
+                        'if(isSc(_tp.displayName))_tsc=_tp.getValue();}' +
                     'applyMot(_tc,_tx+(' + luR(tb.delta.dx) + '),_ty+(' + luR(tb.delta.dy) + '),_tsc+(' + luR(tb.delta.ds) + '));' +
-                    'results.push("tablero[V' + (tb.trackIdx + 1) + '] "+_tc.projectItem.name' +
-                        '+" → "+(_tx+(' + luR(tb.delta.dx) + ')).toFixed(0)+","+(_ty+(' + luR(tb.delta.dy) + ')).toFixed(0)' +
+                    'results.push("board[V' + (tb.trackIdx + 1) + '] "+_tc.projectItem.name' +
+                        '+" -> "+(_tx+(' + luR(tb.delta.dx) + ')).toFixed(0)+","+(_ty+(' + luR(tb.delta.dy) + ')).toFixed(0)' +
                         '+" "+(_tsc+(' + luR(tb.delta.ds) + ')).toFixed(1)+"%");' +
                 '}}';
         }
@@ -1461,14 +1469,14 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         var hasAction = luState.autor.delta || luState.tablero.delta ||
                         luState.toDelete.length || luState.fondo.path;
         if (!hasAction) {
-            luStatus.textContent = 'Nada configurado. Captura posición o selecciona fondo.';
+            luStatus.textContent = 'Nothing configured. Capture a position or select a background.';
             luStatus.className   = 'status error';
             return;
         }
 
         btnTest.disabled = true;
         btnRun.disabled  = true;
-        luStatus.textContent = singleSeq ? 'Aplicando en capítulo activo...' : 'Aplicando en todo el curso...';
+        luStatus.textContent = singleSeq ? 'Applying to active chapter...' : 'Applying to full course...';
         luStatus.className   = 'status running';
         luLog.style.display  = 'none';
 
@@ -1476,8 +1484,8 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
             btnTest.disabled = false;
             btnRun.disabled  = false;
             var ok = res && res.indexOf('ok|') === 0;
-            luStatus.textContent = ok ? '✓ Aplicado' : ('ERROR: ' + (res || 'sin respuesta'));
-            luStatus.className   = 'status ' + (ok ? 'success' : 'error');
+            luStatus.textContent = ok ? 'Done' : ('ERROR: ' + (res || 'no response'));
+            luStatus.className   = 'status ' + (ok ? 'done' : 'error');
             luLog.textContent    = (res || '').replace(/\|/g, '\n');
             luLog.style.display  = 'block';
         });
@@ -1492,13 +1500,13 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         var luStatus = document.getElementById('luStatus');
         var luLog    = document.getElementById('luLog');
         if (!luState.exportDir) {
-            luStatus.textContent = 'Selecciona carpeta de destino primero.';
+            luStatus.textContent = 'Select output folder first.';
             luStatus.className   = 'status error';
             return;
         }
         var btn = this;
         btn.disabled = true;
-        luStatus.textContent = 'Encolando en Media Encoder...';
+        luStatus.textContent = 'Queuing in Media Encoder...';
         luStatus.className   = 'status running';
 
         var exportDir  = luState.exportDir.replace(/\\/g, '/').replace(/"/g, '\\"');
@@ -1524,8 +1532,8 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 btn.disabled = false;
                 var ok = res && res.indexOf('ok|') === 0;
                 var parts = ok ? res.split('|') : null;
-                luStatus.textContent = ok ? ('✓ ' + (parts[1] || '')) : ('ERROR: ' + (res || 'sin respuesta'));
-                luStatus.className   = 'status ' + (ok ? 'success' : 'error');
+                luStatus.textContent = ok ? (parts[1] || 'Done') : ('ERROR: ' + (res || 'no response'));
+                luStatus.className   = 'status ' + (ok ? 'done' : 'error');
                 luLog.textContent    = (res || '').replace(/\|/g, '\n');
                 luLog.style.display  = 'block';
             }
