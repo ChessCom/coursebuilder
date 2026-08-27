@@ -1,10 +1,10 @@
-/* Course Builder Panel v110.20 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v111.00 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v110.20</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v111.00</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -69,6 +69,54 @@ document.getElementById('app').innerHTML = [
     '    <button class="btn-test" id="btnMsNext">Next &#8250;</button>',
     '    <button class="btn-test" id="btnMsPrev" style="display:none">&#8249; Previous</button>',
     '    <div class="status" id="msFillStatus"></div>',
+    '  </div>',
+    '</div>',
+    '<div class="tool-divider">Legacy Updater <span class="tool-ver">v1</span></div>',
+    '<div class="section">',
+    '  <div class="lu-card">',
+    '    <div class="lu-card-title">Autor</div>',
+    '    <div class="lu-row">',
+    '      <button class="btn-small" id="luAutorCap1">&#9312; Capturar inicial</button>',
+    '      <button class="btn-small" id="luAutorCap2">&#9313; Capturar nueva</button>',
+    '    </div>',
+    '    <div class="lu-info" id="luAutorInfo">&mdash;</div>',
+    '  </div>',
+    '  <div class="lu-card">',
+    '    <div class="lu-card-title">Tablero</div>',
+    '    <div class="lu-row">',
+    '      <button class="btn-small" id="luTbCap1">&#9312; Capturar inicial</button>',
+    '      <button class="btn-small" id="luTbCap2">&#9313; Capturar nueva</button>',
+    '    </div>',
+    '    <div class="lu-info" id="luTbInfo">&mdash;</div>',
+    '  </div>',
+    '  <div class="lu-card">',
+    '    <div class="lu-card-title">Fondo</div>',
+    '    <div class="lu-row">',
+    '      <button class="btn-small" id="luBgSel">Buscar archivo...</button>',
+    '    </div>',
+    '    <div class="lu-info" id="luBgInfo">&mdash;</div>',
+    '  </div>',
+    '  <div class="lu-card">',
+    '    <div class="lu-card-title">Borrar clips</div>',
+    '    <div class="lu-row">',
+    '      <button class="btn-small" id="luDelMark">Marcar selecci&oacute;n</button>',
+    '      <button class="btn-small" id="luDelClear">Limpiar</button>',
+    '    </div>',
+    '    <div class="lu-info" id="luDelInfo">&mdash;</div>',
+    '  </div>',
+    '  <div class="lu-row" style="margin-top:4px">',
+    '    <button class="btn-lu-run" id="luBtnTest">&#9654; Probar (cap&iacute;tulo)</button>',
+    '    <button class="btn-lu-run" id="luBtnRun">&#9654;&#9654; Aplicar al curso</button>',
+    '  </div>',
+    '  <div class="status" id="luStatus"></div>',
+    '  <div class="lu-log" id="luLog" style="display:none"></div>',
+    '  <div class="lu-card" style="margin-top:6px">',
+    '    <div class="lu-card-title">Exportar</div>',
+    '    <div class="lu-row">',
+    '      <button class="btn-small" id="luExportDir">Carpeta destino...</button>',
+    '    </div>',
+    '    <div class="lu-info" id="luExportInfo">&mdash;</div>',
+    '    <button class="btn-at" style="margin-top:6px;width:100%" id="luBtnExport">&#128228; Enviar a Media Encoder</button>',
     '  </div>',
     '</div>',
     '<div class="log-header">',
@@ -1177,5 +1225,312 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
     );
 });
 
+
+
+/* ── Legacy Updater ─────────────────────────────────────────────────────── */
+(function () {
+    var luState = {
+        autor:    { before: null, after: null, delta: null, trackIdx: -1, name: '' },
+        tablero:  { before: null, after: null, delta: null, trackIdx: -1, name: '' },
+        fondo:    { path: '' },
+        toDelete: [],
+        exportDir: ''
+    };
+
+    /* Restore persisted paths */
+    try { var _lsBg = localStorage.getItem('lu_bg_path');    if (_lsBg) { luState.fondo.path = _lsBg;   document.getElementById('luBgInfo').textContent     = _lsBg.split('/').pop();  } } catch(e) {}
+    try { var _lsEx = localStorage.getItem('lu_export_dir'); if (_lsEx) { luState.exportDir  = _lsEx;   document.getElementById('luExportInfo').textContent = _lsEx.split('/').pop(); } } catch(e) {}
+
+    function luR(v) { return Math.round(v * 100) / 100; }
+
+    function luInfoText(state) {
+        if (!state.before) return '—';
+        var t = 'V' + (state.trackIdx + 1) + ' » ' + state.name + '\n';
+        t += 'Antes:   ' + luR(state.before.pos.x) + ', ' + luR(state.before.pos.y) + '  ' + luR(state.before.scl) + '%';
+        if (state.after) {
+            t += '\nDespués: ' + luR(state.after.pos.x) + ', ' + luR(state.after.pos.y) + '  ' + luR(state.after.scl) + '%';
+            if (state.delta) {
+                var dx = luR(state.delta.dx), dy = luR(state.delta.dy), ds = luR(state.delta.ds);
+                t += '\nΔ: (' + (dx >= 0 ? '+' : '') + dx + ', ' + (dy >= 0 ? '+' : '') + dy + ')  scl ' + (ds >= 0 ? '+' : '') + ds + '%';
+            }
+        }
+        return t;
+    }
+
+    var LU_CAP_JSX = '(function(){' +
+        'var seq=app.project.activeSequence;if(!seq)return "ERR: no active sequence";' +
+        'var sel=null,trkIdx=-1;' +
+        'for(var vi=0;vi<seq.videoTracks.numTracks;vi++){var vt=seq.videoTracks[vi];' +
+            'for(var ci=0;ci<vt.clips.numItems;ci++){if(vt.clips[ci].isSelected()){sel=vt.clips[ci];trkIdx=vi;break;}}if(sel)break;}' +
+        'if(!sel)return "ERR: no clip selected in timeline";' +
+        'var nm=sel.projectItem?sel.projectItem.name:"?";' +
+        'var pos={x:960,y:540},scl=100;' +
+        'try{var mc=sel.getComponentByDisplayName("Motion");if(!mc)mc=sel.getComponentByDisplayName("Movimiento");' +
+            'if(mc){for(var pi=0;pi<mc.properties.numItems;pi++){var p=mc.properties[pi],pn=p.displayName;' +
+                'if(pn==="Position"||pn==="Posición"){var v=p.getValue();pos={x:v[0],y:v[1]};}' +
+                'if(pn==="Scale"||pn==="Escala"){scl=p.getValue();}}}}catch(e){}' +
+        'return JSON.stringify({name:nm,trkIdx:trkIdx,pos:pos,scl:scl});' +
+    '})()';
+
+    function luCapture(which, step) {
+        var infoId = which === 'autor' ? 'luAutorInfo' : 'luTbInfo';
+        safeEvalScript(LU_CAP_JSX, function (res) {
+            if (!res || res.indexOf('ERR:') === 0) {
+                document.getElementById(infoId).textContent = res || 'sin respuesta';
+                return;
+            }
+            try {
+                var d = JSON.parse(res);
+                var st = luState[which];
+                if (step === 1) {
+                    st.before   = { pos: d.pos, scl: d.scl };
+                    st.after    = null;
+                    st.delta    = null;
+                    st.trackIdx = d.trkIdx;
+                    st.name     = d.name;
+                } else {
+                    st.after = { pos: d.pos, scl: d.scl };
+                    if (st.before) {
+                        st.delta = {
+                            dx: d.pos.x - st.before.pos.x,
+                            dy: d.pos.y - st.before.pos.y,
+                            ds: d.scl   - st.before.scl
+                        };
+                    }
+                }
+                document.getElementById(infoId).textContent = luInfoText(st);
+            } catch (e) {
+                document.getElementById(infoId).textContent = 'parse ERR: ' + e.message;
+            }
+        });
+    }
+
+    document.getElementById('luAutorCap1').addEventListener('click', function () { luCapture('autor',   1); });
+    document.getElementById('luAutorCap2').addEventListener('click', function () { luCapture('autor',   2); });
+    document.getElementById('luTbCap1'   ).addEventListener('click', function () { luCapture('tablero', 1); });
+    document.getElementById('luTbCap2'   ).addEventListener('click', function () { luCapture('tablero', 2); });
+
+    document.getElementById('luBgSel').addEventListener('click', function () {
+        safeEvalScript(
+            '(function(){var f=File.openDialog("Seleccionar fondo","Archivos de vídeo:*.mp4;*.mov;*.png;*.jpg",false);return f?f.fsName:"cancelled";})();',
+            function (res) {
+                if (!res || res === 'cancelled') return;
+                luState.fondo.path = res;
+                try { localStorage.setItem('lu_bg_path', res); } catch(e) {}
+                document.getElementById('luBgInfo').textContent = res.split('/').pop() || res;
+            }
+        );
+    });
+
+    document.getElementById('luDelMark').addEventListener('click', function () {
+        safeEvalScript(
+            '(function(){var seq=app.project.activeSequence;if(!seq)return "ERR: no seq";var names=[];' +
+            'for(var vi=0;vi<seq.videoTracks.numTracks;vi++){var vt=seq.videoTracks[vi];' +
+                'for(var ci=0;ci<vt.clips.numItems;ci++){var cl=vt.clips[ci];' +
+                    'if(cl.isSelected()&&cl.projectItem)names.push(cl.projectItem.name);}}' +
+            'return JSON.stringify(names);})()',
+            function (res) {
+                try {
+                    var arr = JSON.parse(res);
+                    for (var i = 0; i < arr.length; i++) {
+                        if (luState.toDelete.indexOf(arr[i]) < 0) luState.toDelete.push(arr[i]);
+                    }
+                    document.getElementById('luDelInfo').textContent =
+                        luState.toDelete.length + ' clip(s): ' + luState.toDelete.join(', ');
+                } catch (e) {
+                    document.getElementById('luDelInfo').textContent = 'ERR: ' + (res || e.message);
+                }
+            }
+        );
+    });
+
+    document.getElementById('luDelClear').addEventListener('click', function () {
+        luState.toDelete = [];
+        document.getElementById('luDelInfo').textContent = '—';
+    });
+
+    document.getElementById('luExportDir').addEventListener('click', function () {
+        safeEvalScript(
+            '(function(){var f=Folder.selectDialog("Carpeta de destino");return f?f.fsName:"cancelled";})();',
+            function (res) {
+                if (!res || res === 'cancelled') return;
+                luState.exportDir = res;
+                try { localStorage.setItem('lu_export_dir', res); } catch(e) {}
+                document.getElementById('luExportInfo').textContent = res.split('/').pop() || res;
+            }
+        );
+    });
+
+    function luBuildApplyJSX(singleSeq) {
+        var a   = luState.autor;
+        var tb  = luState.tablero;
+        var delJson = JSON.stringify(luState.toDelete);
+        var bgPath  = (luState.fondo.path || '').replace(/\\/g, '/').replace(/"/g, '\\"');
+
+        var jsx = '(function(){var results=[];var seqs=[];';
+
+        if (singleSeq) {
+            jsx += 'var _as=app.project.activeSequence;if(_as)seqs.push(_as);';
+        } else {
+            jsx += 'function collectSeqs(item,arr){' +
+                'try{var s=item.getSequence();if(s){var nm=item.name.toLowerCase();' +
+                    'if(nm.indexOf("webcam")<0&&nm.indexOf("nested")<0&&nm.indexOf("_preview")<0&&nm.indexOf("test")<0)arr.push(s);}}catch(e){}' +
+                'try{var ch=item.children;for(var k=0;k<ch.numItems;k++)collectSeqs(ch[k],arr);}catch(e){}' +
+            '}collectSeqs(app.project.rootItem,seqs);';
+        }
+
+        jsx += 'if(!seqs.length)return "ERR: no sequences found";';
+
+        if (bgPath) {
+            jsx += 'var bgItem=null;var _bgp="' + bgPath + '";' +
+                'function findBg(item){' +
+                    'try{if(item.getMediaPath()===_bgp)return item;}catch(e){}' +
+                    'try{var ch=item.children;for(var fk=0;fk<ch.numItems;fk++){var ff=findBg(ch[fk]);if(ff)return ff;}}catch(e){}' +
+                    'return null;}' +
+                'bgItem=findBg(app.project.rootItem);' +
+                'if(!bgItem)results.push("WARN: bg not in project");';
+        }
+
+        jsx += 'var delNames=' + delJson + ';';
+
+        jsx += 'function applyMot(clip,px,py,sc){' +
+            'try{var mc=clip.getComponentByDisplayName("Motion");if(!mc)mc=clip.getComponentByDisplayName("Movimiento");if(!mc)return;' +
+            'for(var _pi=0;_pi<mc.properties.numItems;_pi++){var _p=mc.properties[_pi],_pn=_p.displayName;' +
+                'if(_pn==="Position"||_pn==="Posición"){try{_p.setValue([px,py],true);}catch(e){}}' +
+                'if(_pn==="Scale"||_pn==="Escala"){try{_p.setValue(sc,true);}catch(e){}}}' +
+            '}catch(e){results.push("motERR:"+e.message);}}';
+
+        jsx += 'for(var _si=0;_si<seqs.length;_si++){var seq=seqs[_si];if(!seq)continue;results.push("---"+seq.name);';
+
+        if (a.delta) {
+            jsx += 'if(' + a.trackIdx + '<seq.videoTracks.numTracks){var _aTrk=seq.videoTracks[' + a.trackIdx + '];' +
+                'for(var _ai=0;_ai<_aTrk.clips.numItems;_ai++){var _ac=_aTrk.clips[_ai];if(!_ac.projectItem)continue;' +
+                    'var _amc=_ac.getComponentByDisplayName("Motion");if(!_amc)_amc=_ac.getComponentByDisplayName("Movimiento");if(!_amc)continue;' +
+                    'var _ax=960,_ay=540,_asc=100;' +
+                    'for(var _api=0;_api<_amc.properties.numItems;_api++){var _ap=_amc.properties[_api],_apn=_ap.displayName;' +
+                        'if(_apn==="Position"||_apn==="Posición"){var _av=_ap.getValue();_ax=_av[0];_ay=_av[1];}' +
+                        'if(_apn==="Scale"||_apn==="Escala")_asc=_ap.getValue();}' +
+                    'applyMot(_ac,_ax+(' + luR(a.delta.dx) + '),_ay+(' + luR(a.delta.dy) + '),_asc+(' + luR(a.delta.ds) + '));' +
+                    'results.push("autor[V' + (a.trackIdx + 1) + '] "+_ac.projectItem.name' +
+                        '+" → "+(_ax+(' + luR(a.delta.dx) + ')).toFixed(0)+","+(_ay+(' + luR(a.delta.dy) + ')).toFixed(0)' +
+                        '+" "+(_asc+(' + luR(a.delta.ds) + ')).toFixed(1)+"%");' +
+                '}}';
+        }
+
+        if (tb.delta) {
+            jsx += 'if(' + tb.trackIdx + '<seq.videoTracks.numTracks){var _tTrk=seq.videoTracks[' + tb.trackIdx + '];' +
+                'for(var _ti=0;_ti<_tTrk.clips.numItems;_ti++){var _tc=_tTrk.clips[_ti];if(!_tc.projectItem)continue;' +
+                    'var _tmc=_tc.getComponentByDisplayName("Motion");if(!_tmc)_tmc=_tc.getComponentByDisplayName("Movimiento");if(!_tmc)continue;' +
+                    'var _tx=960,_ty=540,_tsc=100;' +
+                    'for(var _tpi=0;_tpi<_tmc.properties.numItems;_tpi++){var _tp=_tmc.properties[_tpi],_tpn=_tp.displayName;' +
+                        'if(_tpn==="Position"||_tpn==="Posición"){var _tv=_tp.getValue();_tx=_tv[0];_ty=_tv[1];}' +
+                        'if(_tpn==="Scale"||_tpn==="Escala")_tsc=_tp.getValue();}' +
+                    'applyMot(_tc,_tx+(' + luR(tb.delta.dx) + '),_ty+(' + luR(tb.delta.dy) + '),_tsc+(' + luR(tb.delta.ds) + '));' +
+                    'results.push("tablero[V' + (tb.trackIdx + 1) + '] "+_tc.projectItem.name' +
+                        '+" → "+(_tx+(' + luR(tb.delta.dx) + ')).toFixed(0)+","+(_ty+(' + luR(tb.delta.dy) + ')).toFixed(0)' +
+                        '+" "+(_tsc+(' + luR(tb.delta.ds) + ')).toFixed(1)+"%");' +
+                '}}';
+        }
+
+        jsx += 'if(delNames.length){for(var _dvi=0;_dvi<seq.videoTracks.numTracks;_dvi++){' +
+            'var _dvt=seq.videoTracks[_dvi];var _dDel=[];' +
+            'for(var _dci=0;_dci<_dvt.clips.numItems;_dci++){var _dcl=_dvt.clips[_dci];' +
+                'if(_dcl.projectItem&&delNames.indexOf(_dcl.projectItem.name)>=0)_dDel.push(_dci);}' +
+            'for(var _dri=_dDel.length-1;_dri>=0;_dri--){' +
+                'try{_dvt.clips[_dDel[_dri]].remove(false,false);results.push("del V"+(_dvi+1));}' +
+                'catch(e){results.push("delERR:"+e.message);}}}}';
+
+        if (bgPath) {
+            jsx += 'if(bgItem){var _bgTrk=seq.videoTracks[0];' +
+                'for(var _brci=_bgTrk.clips.numItems-1;_brci>=0;_brci--){try{_bgTrk.clips[_brci].remove(false,false);}catch(e){}}' +
+                'try{var _bgT=new Time();_bgT.seconds=0;_bgTrk.overwriteClip(bgItem,_bgT);' +
+                    'var _bgC=_bgTrk.clips[0];if(_bgC){var _bgEnd=new Time();_bgEnd.seconds=seq.end.seconds;try{_bgC.end=_bgEnd;}catch(e){}}' +
+                    'results.push("bg replaced in V1");}catch(e){results.push("bgERR:"+e.message);}}';
+        }
+
+        jsx += '}return "ok|"+results.join("|");})()';
+        return jsx;
+    }
+
+    function luRun(singleSeq) {
+        var luStatus = document.getElementById('luStatus');
+        var luLog    = document.getElementById('luLog');
+        var btnTest  = document.getElementById('luBtnTest');
+        var btnRun   = document.getElementById('luBtnRun');
+
+        var hasAction = luState.autor.delta || luState.tablero.delta ||
+                        luState.toDelete.length || luState.fondo.path;
+        if (!hasAction) {
+            luStatus.textContent = 'Nada configurado. Captura posición o selecciona fondo.';
+            luStatus.className   = 'status error';
+            return;
+        }
+
+        btnTest.disabled = true;
+        btnRun.disabled  = true;
+        luStatus.textContent = singleSeq ? 'Aplicando en capítulo activo...' : 'Aplicando en todo el curso...';
+        luStatus.className   = 'status running';
+        luLog.style.display  = 'none';
+
+        safeEvalScript(luBuildApplyJSX(singleSeq), function (res) {
+            btnTest.disabled = false;
+            btnRun.disabled  = false;
+            var ok = res && res.indexOf('ok|') === 0;
+            luStatus.textContent = ok ? '✓ Aplicado' : ('ERROR: ' + (res || 'sin respuesta'));
+            luStatus.className   = 'status ' + (ok ? 'success' : 'error');
+            luLog.textContent    = (res || '').replace(/\|/g, '\n');
+            luLog.style.display  = 'block';
+        });
+    }
+
+    document.getElementById('luBtnTest').addEventListener('click', function () { luRun(true);  });
+    document.getElementById('luBtnRun' ).addEventListener('click', function () { luRun(false); });
+
+    var LU_PRESET = '/Users/raulmartinez/Desktop/chess.com/Video Editing Assets 2026/Export Presets/Chessable Vimeo Export 2026.epr';
+
+    document.getElementById('luBtnExport').addEventListener('click', function () {
+        var luStatus = document.getElementById('luStatus');
+        var luLog    = document.getElementById('luLog');
+        if (!luState.exportDir) {
+            luStatus.textContent = 'Selecciona carpeta de destino primero.';
+            luStatus.className   = 'status error';
+            return;
+        }
+        var btn = this;
+        btn.disabled = true;
+        luStatus.textContent = 'Encolando en Media Encoder...';
+        luStatus.className   = 'status running';
+
+        var exportDir  = luState.exportDir.replace(/\\/g, '/').replace(/"/g, '\\"');
+        var presetPath = LU_PRESET.replace(/"/g, '\\"');
+
+        safeEvalScript(
+            '(function(){var results=[];' +
+            'var presetPath="' + presetPath + '";var exportDir="' + exportDir + '";var seqs=[];' +
+            'function collectSeqs(item,arr){' +
+                'try{var s=item.getSequence();if(s){var nm=item.name.toLowerCase();' +
+                    'if(nm.indexOf("webcam")<0&&nm.indexOf("nested")<0&&nm.indexOf("_preview")<0&&nm.indexOf("test")<0)arr.push(s);}}catch(e){}' +
+                'try{var ch=item.children;for(var k=0;k<ch.numItems;k++)collectSeqs(ch[k],arr);}catch(e){}' +
+            '}collectSeqs(app.project.rootItem,seqs);' +
+            'if(!seqs.length)return "ERR: no sequences found";' +
+            'for(var si=0;si<seqs.length;si++){var seq=seqs[si];if(!seq)continue;' +
+                'var safeName=seq.name.replace(/[\\/\\\\:*?"<>|]/g,"_");' +
+                'var outPath=exportDir+"/"+safeName+".mp4";' +
+                'try{app.encoder.launchAndEncode(seq,outPath,presetPath,0,false);results.push("queued: "+seq.name);}' +
+                'catch(e){results.push("ERR "+seq.name+": "+e.message);}}' +
+            'return "ok|"+results.length+" sequences queued|"+results.join("|");' +
+            '})()',
+            function (res) {
+                btn.disabled = false;
+                var ok = res && res.indexOf('ok|') === 0;
+                var parts = ok ? res.split('|') : null;
+                luStatus.textContent = ok ? ('✓ ' + (parts[1] || '')) : ('ERROR: ' + (res || 'sin respuesta'));
+                luStatus.className   = 'status ' + (ok ? 'success' : 'error');
+                luLog.textContent    = (res || '').replace(/\|/g, '\n');
+                luLog.style.display  = 'block';
+            }
+        );
+    });
+})(); // end Legacy Updater
 
 })(); // end panel IIFE
