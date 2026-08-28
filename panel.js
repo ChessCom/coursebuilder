@@ -1,10 +1,10 @@
-/* Course Builder Panel v111.00 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v111.04 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v111.00</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v111.04</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -1394,11 +1394,17 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         );
     });
 
+    function luEscJSX(str) {
+        return str.replace(/[^\x00-\x7F]/g, function(ch) {
+            return '\\u' + ('0000' + ch.charCodeAt(0).toString(16)).slice(-4);
+        });
+    }
+
     function luBuildApplyJSX(singleSeq) {
         var a   = luState.autor;
         var tb  = luState.tablero;
-        var delJson = JSON.stringify(luState.toDelete);
-        var bgPath  = (luState.fondo.path || '').replace(/\\/g, '/').replace(/"/g, '\\"');
+        var delJson = luEscJSX(JSON.stringify(luState.toDelete));
+        var bgPath  = luEscJSX((luState.fondo.path || '').replace(/\\/g, '/').replace(/"/g, '\\"'));
 
         var jsx = '(function(){try{var results=[];var seqs=[];';
 
