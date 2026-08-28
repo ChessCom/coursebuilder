@@ -1,10 +1,10 @@
-/* Course Builder Panel v111.07 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v111.08 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v111.07</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v111.08</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -74,20 +74,20 @@ document.getElementById('app').innerHTML = [
     '<div class="tool-divider">Legacy Updater <span class="tool-ver">v1</span></div>',
     '<div class="section">',
     '  <div class="lu-card">',
-    '    <div class="lu-card-title">Author</div>',
-    '    <div class="lu-row">',
-    '      <button class="btn-small" id="luAutorCap1">&#9312; Capture initial</button>',
-    '      <button class="btn-small" id="luAutorCap2">&#9313; Capture new pos.</button>',
-    '    </div>',
-    '    <div class="lu-info" id="luAutorInfo">&mdash;</div>',
-    '  </div>',
-    '  <div class="lu-card">',
     '    <div class="lu-card-title">Board</div>',
     '    <div class="lu-row">',
     '      <button class="btn-small" id="luTbCap1">&#9312; Capture initial</button>',
     '      <button class="btn-small" id="luTbCap2">&#9313; Capture new pos.</button>',
     '    </div>',
     '    <div class="lu-info" id="luTbInfo">&mdash;</div>',
+    '  </div>',
+    '  <div class="lu-card">',
+    '    <div class="lu-card-title">Author</div>',
+    '    <div class="lu-row">',
+    '      <button class="btn-small" id="luAutorCap1">&#9312; Capture initial</button>',
+    '      <button class="btn-small" id="luAutorCap2">&#9313; Capture new pos.</button>',
+    '    </div>',
+    '    <div class="lu-info" id="luAutorInfo">&mdash;</div>',
     '  </div>',
     '  <div class="lu-card">',
     '    <div class="lu-card-title">Background</div>',
@@ -1338,7 +1338,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 document.getElementById(infoId).textContent = 'ERR: bad response: ' + res;
                 return;
             }
-            if (parts[9]) luLog('DBG: ' + parts[9]);
+            if (parts[9]) { luLog('DBG: ' + parts[9]); document.getElementById(infoId).textContent = 'DBG: ' + parts[9]; return; }
             var d = {
                 n:  parts[0], t: parseInt(parts[1], 10),
                 x:  parseFloat(parts[2]), y: parseFloat(parts[3]), s: parseFloat(parts[4]),
