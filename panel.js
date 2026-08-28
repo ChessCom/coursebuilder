@@ -1,10 +1,10 @@
-/* Course Builder Panel v111.08 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v111.09 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v111.08</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v111.09</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -1290,39 +1290,12 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         '}' +
         'if(!sel)return "ERR: no clip selected";' +
         'var nm=sel.projectItem?sel.projectItem.name:"?";' +
-        'var px=960,py=540,sc=100,cl=0,ct=0,cr=0,cb=0;' +
         'var dbg="";' +
-        'try{' +
-            'var vc=sel.videoComponents;dbg="vc.n="+vc.numItems;' +
-            'var mc=null;' +
-            'for(var vci=0;vci<vc.numItems;vci++){' +
-                'var vcomp=vc[vci];if(vci<5)dbg+="|"+vcomp.displayName;' +
-                'var vdn=vcomp.displayName;' +
-                'if(vdn.indexOf("Motion")>=0||vdn.indexOf("Movimiento")>=0){mc=vcomp;break;}' +
-            '}' +
-            'if(!mc){dbg+=" mc=null";}' +
-            'else{' +
-                'dbg+=" mc="+mc.displayName+",n="+mc.properties.numItems;' +
-                'for(var pi=0;pi<mc.properties.numItems;pi++){' +
-                    'var p=mc.properties[pi],pn=p.displayName;' +
-                    'if(pi<3)dbg+=","+pn;' +
-                    'try{' +
-                        'var rv;try{rv=p.getValue();}catch(ge){rv=p.value;}' +
-                        'if(pn.indexOf("Pos")===0){dbg+="=[rv="+rv+"]";' +
-                            'if(rv&&rv.length>=2){px=parseFloat(rv[0]);py=parseFloat(rv[1]);}' +
-                            'else if(rv&&rv.x!==undefined){px=parseFloat(rv.x);py=parseFloat(rv.y);}' +
-                        '}' +
-                        'if(pn.indexOf("Scale")===0||pn.indexOf("Esca")===0){sc=parseFloat(rv);}' +
-                        'if(pn.indexOf("Crop")===0){var cfv=parseFloat(rv);' +
-                            'if(pn.indexOf("Left")>0)cl=cfv;' +
-                            'else if(pn.indexOf("Top")>0)ct=cfv;' +
-                            'else if(pn.indexOf("Right")>0)cr=cfv;' +
-                            'else if(pn.indexOf("Bot")>0)cb=cfv;}' +
-                    '}catch(pe){dbg+="[E:"+pe.message+"]";}' +
-                '}' +
-            '}' +
-        '}catch(em){dbg="vcERR:"+em.message;}' +
-        'return nm+"|||"+ti+"|||"+px+"|||"+py+"|||"+sc+"|||"+cl+"|||"+ct+"|||"+cr+"|||"+cb+"|||"+dbg;' +
+        'try{var vc=sel.videoComponents;dbg+="vc.n="+(vc?vc.numItems:"null");}catch(e){dbg+="vc=ERR:"+e.message;}' +
+        'try{var co=sel.components;dbg+=" co.n="+(co?co.numItems:"null");}catch(e){dbg+=" co=ERR:"+e.message;}' +
+        'try{var gm=sel.getComponentByDisplayName("Motion");dbg+=" gM="+(gm?gm.displayName:"null");}catch(e){dbg+=" gM=ERR:"+e.message;}' +
+        'try{var keys=[];for(var k in sel){var kl=k.toLowerCase();if(kl.indexOf("comp")>=0||kl.indexOf("mot")>=0||kl.indexOf("prop")>=0||kl.indexOf("eff")>=0)keys.push(k);}dbg+=" keys=["+keys.slice(0,10).join(",")+"]";}catch(e){dbg+=" keys=ERR:"+e.message;}' +
+        'return "DBG|||"+nm+"|||"+dbg;' +
     '}catch(e){return "ERR: "+e.message;}})()';
 
     function luCapture(which, step) {
@@ -1334,6 +1307,12 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 return;
             }
             var parts = res.split('|||');
+            if (parts[0] === 'DBG') {
+                var dbgText = parts[1] + '\n' + parts[2];
+                luLog('DBG: ' + dbgText);
+                document.getElementById(infoId).textContent = dbgText;
+                return;
+            }
             if (parts.length < 5) {
                 document.getElementById(infoId).textContent = 'ERR: bad response: ' + res;
                 return;
