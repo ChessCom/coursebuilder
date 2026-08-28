@@ -1,10 +1,10 @@
-/* Course Builder Panel v111.06 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v111.07 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v111.06</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v111.07</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -1293,20 +1293,27 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         'var px=960,py=540,sc=100,cl=0,ct=0,cr=0,cb=0;' +
         'var dbg="";' +
         'try{' +
-            'var mc=sel.getComponentByDisplayName("Motion");' +
-            'if(!mc)mc=sel.getComponentByDisplayName("Movimiento");' +
-            'if(!mc){dbg="mc=null";' +
-                'try{var vc=sel.videoComponents;dbg+=" vc.n="+vc.numItems;' +
-                    'for(var vci=0;vci<Math.min(vc.numItems,4);vci++)dbg+=","+vc[vci].displayName;}catch(ve){dbg+=" vcERR:"+ve.message;}' +
-            '}else{' +
-                'dbg="mc="+mc.displayName+",n="+mc.properties.numItems;' +
+            'var vc=sel.videoComponents;dbg="vc.n="+vc.numItems;' +
+            'var mc=null;' +
+            'for(var vci=0;vci<vc.numItems;vci++){' +
+                'var vcomp=vc[vci];if(vci<5)dbg+="|"+vcomp.displayName;' +
+                'var vdn=vcomp.displayName;' +
+                'if(vdn.indexOf("Motion")>=0||vdn.indexOf("Movimiento")>=0){mc=vcomp;break;}' +
+            '}' +
+            'if(!mc){dbg+=" mc=null";}' +
+            'else{' +
+                'dbg+=" mc="+mc.displayName+",n="+mc.properties.numItems;' +
                 'for(var pi=0;pi<mc.properties.numItems;pi++){' +
                     'var p=mc.properties[pi],pn=p.displayName;' +
-                    'if(pi<4)dbg+=","+pn;' +
+                    'if(pi<3)dbg+=","+pn;' +
                     'try{' +
-                        'if(pn.indexOf("Pos")===0){var pv=p.getValue();dbg+="=["+pv+"]";px=parseFloat(pv[0]||pv);py=parseFloat(pv[1]||0);}' +
-                        'if(pn.indexOf("Scale")===0||pn.indexOf("Esca")===0){var sv=p.getValue();sc=parseFloat(sv);}' +
-                        'if(pn.indexOf("Crop")===0){var cv=p.getValue();var cfv=parseFloat(cv);' +
+                        'var rv;try{rv=p.getValue();}catch(ge){rv=p.value;}' +
+                        'if(pn.indexOf("Pos")===0){dbg+="=[rv="+rv+"]";' +
+                            'if(rv&&rv.length>=2){px=parseFloat(rv[0]);py=parseFloat(rv[1]);}' +
+                            'else if(rv&&rv.x!==undefined){px=parseFloat(rv.x);py=parseFloat(rv.y);}' +
+                        '}' +
+                        'if(pn.indexOf("Scale")===0||pn.indexOf("Esca")===0){sc=parseFloat(rv);}' +
+                        'if(pn.indexOf("Crop")===0){var cfv=parseFloat(rv);' +
                             'if(pn.indexOf("Left")>0)cl=cfv;' +
                             'else if(pn.indexOf("Top")>0)ct=cfv;' +
                             'else if(pn.indexOf("Right")>0)cr=cfv;' +
@@ -1314,7 +1321,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     '}catch(pe){dbg+="[E:"+pe.message+"]";}' +
                 '}' +
             '}' +
-        '}catch(em){dbg="motERR:"+em.message;}' +
+        '}catch(em){dbg="vcERR:"+em.message;}' +
         'return nm+"|||"+ti+"|||"+px+"|||"+py+"|||"+sc+"|||"+cl+"|||"+ct+"|||"+cr+"|||"+cb+"|||"+dbg;' +
     '}catch(e){return "ERR: "+e.message;}})()';
 
