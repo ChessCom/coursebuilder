@@ -1,10 +1,10 @@
-/* Course Builder Panel v111.09 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v111.10 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v111.09</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v111.10</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -1290,12 +1290,36 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         '}' +
         'if(!sel)return "ERR: no clip selected";' +
         'var nm=sel.projectItem?sel.projectItem.name:"?";' +
+        'var px=960,py=540,sc=100,cl=0,ct=0,cr=0,cb=0;' +
         'var dbg="";' +
-        'try{var vc=sel.videoComponents;dbg+="vc.n="+(vc?vc.numItems:"null");}catch(e){dbg+="vc=ERR:"+e.message;}' +
-        'try{var co=sel.components;dbg+=" co.n="+(co?co.numItems:"null");}catch(e){dbg+=" co=ERR:"+e.message;}' +
-        'try{var gm=sel.getComponentByDisplayName("Motion");dbg+=" gM="+(gm?gm.displayName:"null");}catch(e){dbg+=" gM=ERR:"+e.message;}' +
-        'try{var keys=[];for(var k in sel){var kl=k.toLowerCase();if(kl.indexOf("comp")>=0||kl.indexOf("mot")>=0||kl.indexOf("prop")>=0||kl.indexOf("eff")>=0)keys.push(k);}dbg+=" keys=["+keys.slice(0,10).join(",")+"]";}catch(e){dbg+=" keys=ERR:"+e.message;}' +
-        'return "DBG|||"+nm+"|||"+dbg;' +
+        'try{' +
+            'var comps=sel.components;dbg="n="+comps.numItems;' +
+            'for(var _ci=0;_ci<comps.numItems;_ci++){' +
+                'var comp=comps[_ci],cdn=comp.displayName;dbg+="|"+cdn;' +
+                'if(cdn.indexOf("Motion")>=0||cdn.indexOf("Movimiento")>=0){' +
+                    'for(var _pi=0;_pi<comp.properties.numItems;_pi++){' +
+                        'var _p=comp.properties[_pi],_pn=_p.displayName;' +
+                        'var _rv=null;try{_rv=_p.getValue();}catch(_ge){try{_rv=_p.value;}catch(_ve){}}' +
+                        'if(_pn.indexOf("Pos")===0){dbg+=" pos=["+_rv+"]";' +
+                            'if(_rv&&_rv.length>=2){px=parseFloat(_rv[0]);py=parseFloat(_rv[1]);}' +
+                            'else if(_rv&&_rv.x!==undefined){px=parseFloat(_rv.x);py=parseFloat(_rv.y);}}' +
+                        'if((_pn==="Scale"||_pn==="Escala")&&_rv!==null){dbg+=" sc=["+_rv+"]";sc=parseFloat(_rv)||100;}' +
+                    '}' +
+                '}' +
+                'if(cdn==="Crop"){' +
+                    'for(var _pi2=0;_pi2<comp.properties.numItems;_pi2++){' +
+                        'var _p2=comp.properties[_pi2],_pn2=_p2.displayName;' +
+                        'var _rv2=null;try{_rv2=_p2.getValue();}catch(_ge2){try{_rv2=_p2.value;}catch(_ve2){}}' +
+                        'var _cfv=parseFloat(_rv2)||0;' +
+                        'if(_pn2.indexOf("Left")>=0)cl=_cfv;' +
+                        'else if(_pn2.indexOf("Top")>=0)ct=_cfv;' +
+                        'else if(_pn2.indexOf("Right")>=0)cr=_cfv;' +
+                        'else if(_pn2.indexOf("Bot")>=0)cb=_cfv;' +
+                    '}' +
+                '}' +
+            '}' +
+        '}catch(em){dbg="compERR:"+em.message;}' +
+        'return nm+"|||"+ti+"|||"+px+"|||"+py+"|||"+sc+"|||"+cl+"|||"+ct+"|||"+cr+"|||"+cb+"|||"+dbg;' +
     '}catch(e){return "ERR: "+e.message;}})()';
 
     function luCapture(which, step) {
@@ -1454,18 +1478,27 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
         jsx += 'var delNames=' + delJson + ';';
 
-        jsx += 'function applyMot(clip,px,py,sc,cl,ct,cr,cb){' +
-            'try{var mc=clip.getComponentByDisplayName("Motion");if(!mc)mc=clip.getComponentByDisplayName("Movimiento");if(!mc)return;' +
-            'for(var _pi=0;_pi<mc.properties.numItems;_pi++){var _p=mc.properties[_pi],_pn=_p.displayName;' +
-                'if(_pn.indexOf("Pos")===0){try{_p.setValue([px,py],true);}catch(_pe){}}' +
-                'if(_pn.indexOf("Scale")===0||_pn.indexOf("Esca")===0){try{_p.setValue(sc,true);}catch(_se){}}' +
-                'if(_pn.indexOf("Crop")===0){try{' +
-                    'if(_pn.indexOf("Left")>0)_p.setValue(cl,true);' +
-                    'else if(_pn.indexOf("Top")>0)_p.setValue(ct,true);' +
-                    'else if(_pn.indexOf("Right")>0)_p.setValue(cr,true);' +
-                    'else if(_pn.indexOf("Bot")>0)_p.setValue(cb,true);' +
-                '}catch(_ce){}}}' +
-            '}catch(_me){results.push("motERR:"+_me.message);}}';
+        /* Helper: find component by displayName substring in clip.components */
+        /* applyMot: apply pos/scale delta to Motion component; apply crop delta to Crop component */
+        jsx += 'function getRV(p){var v=null;try{v=p.getValue();}catch(e){try{v=p.value;}catch(e2){}}return v;}' +
+            'function applyMot(clip,px,py,sc,cl,ct,cr,cb){' +
+                'try{var _comps=clip.components;' +
+                'for(var _ci=0;_ci<_comps.numItems;_ci++){var _comp=_comps[_ci],_cdn=_comp.displayName;' +
+                    'if(_cdn.indexOf("Motion")>=0||_cdn.indexOf("Movimiento")>=0){' +
+                        'for(var _pi=0;_pi<_comp.properties.numItems;_pi++){var _p=_comp.properties[_pi],_pn=_p.displayName;' +
+                            'if(_pn.indexOf("Pos")===0){try{_p.setValue([px,py],true);}catch(e){}}' +
+                            'if(_pn==="Scale"||_pn==="Escala"){try{_p.setValue(sc,true);}catch(e){}}' +
+                        '}' +
+                    '}' +
+                    'if(_cdn==="Crop"){' +
+                        'for(var _pi2=0;_pi2<_comp.properties.numItems;_pi2++){var _p2=_comp.properties[_pi2],_pn2=_p2.displayName;' +
+                            'if(_pn2.indexOf("Left")>=0){try{_p2.setValue(cl,true);}catch(e){}}' +
+                            'else if(_pn2.indexOf("Top")>=0){try{_p2.setValue(ct,true);}catch(e){}}' +
+                            'else if(_pn2.indexOf("Right")>=0){try{_p2.setValue(cr,true);}catch(e){}}' +
+                            'else if(_pn2.indexOf("Bot")>=0){try{_p2.setValue(cb,true);}catch(e){}}' +
+                        '}' +
+                    '}' +
+                '}}catch(_me){results.push("motERR:"+_me.message);}}';
 
         jsx += 'for(var _si=0;_si<seqs.length;_si++){var seq=seqs[_si];if(!seq)continue;results.push("---"+seq.name);';
 
@@ -1474,16 +1507,26 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
             var adcl=luR(a.delta.dcl||0),adct=luR(a.delta.dct||0),adcr=luR(a.delta.dcr||0),adcb=luR(a.delta.dcb||0);
             jsx += 'if(' + a.trackIdx + '<seq.videoTracks.numTracks){var _aTrk=seq.videoTracks[' + a.trackIdx + '];' +
                 'for(var _ai=0;_ai<_aTrk.clips.numItems;_ai++){var _ac=_aTrk.clips[_ai];if(!_ac.projectItem)continue;' +
-                    'try{var _amc=_ac.getComponentByDisplayName("Motion");if(!_amc)_amc=_ac.getComponentByDisplayName("Movimiento");if(!_amc)continue;' +
-                    'var _ax=960,_ay=540,_asc=100,_acl=0,_act=0,_acr=0,_acb=0;' +
-                    'for(var _api=0;_api<_amc.properties.numItems;_api++){var _ap=_amc.properties[_api],_apn=_ap.displayName;' +
-                        'if(_apn.indexOf("Pos")===0){var _av=_ap.getValue();_ax=_av[0];_ay=_av[1];}' +
-                        'if(_apn.indexOf("Scale")===0||_apn.indexOf("Esca")===0)_asc=_ap.getValue();' +
-                        'if(_apn.indexOf("Crop")===0){var _acv=_ap.getValue();' +
-                            'if(_apn.indexOf("Left")>0)_acl=_acv;' +
-                            'else if(_apn.indexOf("Top")>0)_act=_acv;' +
-                            'else if(_apn.indexOf("Right")>0)_acr=_acv;' +
-                            'else if(_apn.indexOf("Bot")>0)_acb=_acv;}}' +
+                    'try{var _ax=960,_ay=540,_asc=100,_acl=0,_act=0,_acr=0,_acb=0;' +
+                    'var _acomps=_ac.components;' +
+                    'for(var _aci=0;_aci<_acomps.numItems;_aci++){var _acomp=_acomps[_aci],_acdn=_acomp.displayName;' +
+                        'if(_acdn.indexOf("Motion")>=0||_acdn.indexOf("Movimiento")>=0){' +
+                            'for(var _api=0;_api<_acomp.properties.numItems;_api++){var _ap=_acomp.properties[_api],_apn=_ap.displayName;' +
+                                'var _arv=getRV(_ap);' +
+                                'if(_apn.indexOf("Pos")===0&&_arv){if(_arv.length>=2){_ax=parseFloat(_arv[0]);_ay=parseFloat(_arv[1]);}else if(_arv.x!==undefined){_ax=parseFloat(_arv.x);_ay=parseFloat(_arv.y);}}' +
+                                'if((_apn==="Scale"||_apn==="Escala")&&_arv!==null)_asc=parseFloat(_arv)||100;' +
+                            '}' +
+                        '}' +
+                        'if(_acdn==="Crop"){' +
+                            'for(var _api2=0;_api2<_acomp.properties.numItems;_api2++){var _ap2=_acomp.properties[_api2],_apn2=_ap2.displayName;' +
+                                'var _arv2=getRV(_ap2);var _acfv=parseFloat(_arv2)||0;' +
+                                'if(_apn2.indexOf("Left")>=0)_acl=_acfv;' +
+                                'else if(_apn2.indexOf("Top")>=0)_act=_acfv;' +
+                                'else if(_apn2.indexOf("Right")>=0)_acr=_acfv;' +
+                                'else if(_apn2.indexOf("Bot")>=0)_acb=_acfv;' +
+                            '}' +
+                        '}' +
+                    '}' +
                     'applyMot(_ac,_ax+(' + adx + '),_ay+(' + ady + '),_asc+(' + ads + '),' +
                         '_acl+(' + adcl + '),_act+(' + adct + '),_acr+(' + adcr + '),_acb+(' + adcb + '));' +
                     'results.push("author[V' + (a.trackIdx + 1) + ']:"+_ac.projectItem.name);' +
@@ -1496,16 +1539,26 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
             var tdcl=luR(tb.delta.dcl||0),tdct=luR(tb.delta.dct||0),tdcr=luR(tb.delta.dcr||0),tdcb=luR(tb.delta.dcb||0);
             jsx += 'if(' + tb.trackIdx + '<seq.videoTracks.numTracks){var _tTrk=seq.videoTracks[' + tb.trackIdx + '];' +
                 'for(var _ti=0;_ti<_tTrk.clips.numItems;_ti++){var _tc=_tTrk.clips[_ti];if(!_tc.projectItem)continue;' +
-                    'try{var _tmc=_tc.getComponentByDisplayName("Motion");if(!_tmc)_tmc=_tc.getComponentByDisplayName("Movimiento");if(!_tmc)continue;' +
-                    'var _tx=960,_ty=540,_tsc=100,_tcl=0,_tct=0,_tcr=0,_tcb=0;' +
-                    'for(var _tpi=0;_tpi<_tmc.properties.numItems;_tpi++){var _tp=_tmc.properties[_tpi],_tpn=_tp.displayName;' +
-                        'if(_tpn.indexOf("Pos")===0){var _tv=_tp.getValue();_tx=_tv[0];_ty=_tv[1];}' +
-                        'if(_tpn.indexOf("Scale")===0||_tpn.indexOf("Esca")===0)_tsc=_tp.getValue();' +
-                        'if(_tpn.indexOf("Crop")===0){var _tcv=_tp.getValue();' +
-                            'if(_tpn.indexOf("Left")>0)_tcl=_tcv;' +
-                            'else if(_tpn.indexOf("Top")>0)_tct=_tcv;' +
-                            'else if(_tpn.indexOf("Right")>0)_tcr=_tcv;' +
-                            'else if(_tpn.indexOf("Bot")>0)_tcb=_tcv;}}' +
+                    'try{var _tx=960,_ty=540,_tsc=100,_tcl=0,_tct=0,_tcr=0,_tcb=0;' +
+                    'var _tcomps=_tc.components;' +
+                    'for(var _tci=0;_tci<_tcomps.numItems;_tci++){var _tcomp=_tcomps[_tci],_tcdn=_tcomp.displayName;' +
+                        'if(_tcdn.indexOf("Motion")>=0||_tcdn.indexOf("Movimiento")>=0){' +
+                            'for(var _tpi=0;_tpi<_tcomp.properties.numItems;_tpi++){var _tp=_tcomp.properties[_tpi],_tpn=_tp.displayName;' +
+                                'var _trv=getRV(_tp);' +
+                                'if(_tpn.indexOf("Pos")===0&&_trv){if(_trv.length>=2){_tx=parseFloat(_trv[0]);_ty=parseFloat(_trv[1]);}else if(_trv.x!==undefined){_tx=parseFloat(_trv.x);_ty=parseFloat(_trv.y);}}' +
+                                'if((_tpn==="Scale"||_tpn==="Escala")&&_trv!==null)_tsc=parseFloat(_trv)||100;' +
+                            '}' +
+                        '}' +
+                        'if(_tcdn==="Crop"){' +
+                            'for(var _tpi2=0;_tpi2<_tcomp.properties.numItems;_tpi2++){var _tp2=_tcomp.properties[_tpi2],_tpn2=_tp2.displayName;' +
+                                'var _trv2=getRV(_tp2);var _tcfv=parseFloat(_trv2)||0;' +
+                                'if(_tpn2.indexOf("Left")>=0)_tcl=_tcfv;' +
+                                'else if(_tpn2.indexOf("Top")>=0)_tct=_tcfv;' +
+                                'else if(_tpn2.indexOf("Right")>=0)_tcr=_tcfv;' +
+                                'else if(_tpn2.indexOf("Bot")>=0)_tcb=_tcfv;' +
+                            '}' +
+                        '}' +
+                    '}' +
                     'applyMot(_tc,_tx+(' + tdx + '),_ty+(' + tdy + '),_tsc+(' + tds + '),' +
                         '_tcl+(' + tdcl + '),_tct+(' + tdct + '),_tcr+(' + tdcr + '),_tcb+(' + tdcb + '));' +
                     'results.push("board[V' + (tb.trackIdx + 1) + ']:"+_tc.projectItem.name);' +
