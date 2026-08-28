@@ -1,10 +1,10 @@
-/* Course Builder Panel v111.05 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v111.06 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v111.05</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v111.06</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -1291,21 +1291,31 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         'if(!sel)return "ERR: no clip selected";' +
         'var nm=sel.projectItem?sel.projectItem.name:"?";' +
         'var px=960,py=540,sc=100,cl=0,ct=0,cr=0,cb=0;' +
+        'var dbg="";' +
         'try{' +
             'var mc=sel.getComponentByDisplayName("Motion");' +
             'if(!mc)mc=sel.getComponentByDisplayName("Movimiento");' +
-            'if(mc){for(var pi=0;pi<mc.properties.numItems;pi++){' +
-                'var p=mc.properties[pi],pn=p.displayName;' +
-                'if(pn.indexOf("Pos")===0){var pv=p.getValue();px=pv[0];py=pv[1];}' +
-                'if(pn.indexOf("Scale")===0||pn.indexOf("Esca")===0){sc=p.getValue();}' +
-                'if(pn.indexOf("Crop")===0){var cv=p.getValue();' +
-                    'if(pn.indexOf("Left")>0)cl=cv;' +
-                    'else if(pn.indexOf("Top")>0)ct=cv;' +
-                    'else if(pn.indexOf("Right")>0)cr=cv;' +
-                    'else if(pn.indexOf("Bot")>0)cb=cv;}' +
-            '}}' +
-        '}catch(em){}' +
-        'return nm+"|||"+ti+"|||"+px+"|||"+py+"|||"+sc+"|||"+cl+"|||"+ct+"|||"+cr+"|||"+cb;' +
+            'if(!mc){dbg="mc=null";' +
+                'try{var vc=sel.videoComponents;dbg+=" vc.n="+vc.numItems;' +
+                    'for(var vci=0;vci<Math.min(vc.numItems,4);vci++)dbg+=","+vc[vci].displayName;}catch(ve){dbg+=" vcERR:"+ve.message;}' +
+            '}else{' +
+                'dbg="mc="+mc.displayName+",n="+mc.properties.numItems;' +
+                'for(var pi=0;pi<mc.properties.numItems;pi++){' +
+                    'var p=mc.properties[pi],pn=p.displayName;' +
+                    'if(pi<4)dbg+=","+pn;' +
+                    'try{' +
+                        'if(pn.indexOf("Pos")===0){var pv=p.getValue();dbg+="=["+pv+"]";px=parseFloat(pv[0]||pv);py=parseFloat(pv[1]||0);}' +
+                        'if(pn.indexOf("Scale")===0||pn.indexOf("Esca")===0){var sv=p.getValue();sc=parseFloat(sv);}' +
+                        'if(pn.indexOf("Crop")===0){var cv=p.getValue();var cfv=parseFloat(cv);' +
+                            'if(pn.indexOf("Left")>0)cl=cfv;' +
+                            'else if(pn.indexOf("Top")>0)ct=cfv;' +
+                            'else if(pn.indexOf("Right")>0)cr=cfv;' +
+                            'else if(pn.indexOf("Bot")>0)cb=cfv;}' +
+                    '}catch(pe){dbg+="[E:"+pe.message+"]";}' +
+                '}' +
+            '}' +
+        '}catch(em){dbg="motERR:"+em.message;}' +
+        'return nm+"|||"+ti+"|||"+px+"|||"+py+"|||"+sc+"|||"+cl+"|||"+ct+"|||"+cr+"|||"+cb+"|||"+dbg;' +
     '}catch(e){return "ERR: "+e.message;}})()';
 
     function luCapture(which, step) {
@@ -1321,6 +1331,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 document.getElementById(infoId).textContent = 'ERR: bad response: ' + res;
                 return;
             }
+            if (parts[9]) luLog('DBG: ' + parts[9]);
             var d = {
                 n:  parts[0], t: parseInt(parts[1], 10),
                 x:  parseFloat(parts[2]), y: parseFloat(parts[3]), s: parseFloat(parts[4]),
