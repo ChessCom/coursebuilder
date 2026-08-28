@@ -1262,7 +1262,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         return t;
     }
 
-    /* Capture: whole body in try/catch so we always get a string back, never EvalScript error */
+    /* Capture: returns pipe-separated values — no JSON (not available in ExtendScript ES3) */
     var LU_CAP_JSX = '(function(){try{' +
         'var seq=app.project.activeSequence;' +
         'if(!seq)return "ERR: no active sequence";' +
@@ -1289,36 +1289,41 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 'if(pn.indexOf("Scale")===0||pn.indexOf("Esca")===0){sc=p.getValue();}' +
             '}}' +
         '}catch(em){}' +
-        'return JSON.stringify({n:nm,t:ti,x:px,y:py,s:sc});' +
+        'return nm+"|||"+ti+"|||"+px+"|||"+py+"|||"+sc;' +
     '}catch(e){return "ERR: "+e.message;}})()';
 
     function luCapture(which, step) {
         var infoId = which === 'autor' ? 'luAutorInfo' : 'luTbInfo';
         safeEvalScript(LU_CAP_JSX, function (res) {
             luLog('capture(' + which + ' step' + step + '): ' + res);
-            try {
-                var d = JSON.parse(res);
-                var st = luState[which];
-                if (step === 1) {
-                    st.before   = { pos: { x: d.x, y: d.y }, scl: d.s };
-                    st.after    = null;
-                    st.delta    = null;
-                    st.trackIdx = d.t;
-                    st.name     = d.n;
-                } else {
-                    st.after = { pos: { x: d.x, y: d.y }, scl: d.s };
-                    if (st.before) {
-                        st.delta = {
-                            dx: d.x - st.before.pos.x,
-                            dy: d.y - st.before.pos.y,
-                            ds: d.s - st.before.scl
-                        };
-                    }
-                }
-                document.getElementById(infoId).textContent = luInfoText(st);
-            } catch (e) {
+            if (!res || res.indexOf('ERR:') === 0) {
                 document.getElementById(infoId).textContent = res || 'No response';
+                return;
             }
+            var parts = res.split('|||');
+            if (parts.length < 5) {
+                document.getElementById(infoId).textContent = 'ERR: bad response: ' + res;
+                return;
+            }
+            var d = { n: parts[0], t: parseInt(parts[1], 10), x: parseFloat(parts[2]), y: parseFloat(parts[3]), s: parseFloat(parts[4]) };
+            var st = luState[which];
+            if (step === 1) {
+                st.before   = { pos: { x: d.x, y: d.y }, scl: d.s };
+                st.after    = null;
+                st.delta    = null;
+                st.trackIdx = d.t;
+                st.name     = d.n;
+            } else {
+                st.after = { pos: { x: d.x, y: d.y }, scl: d.s };
+                if (st.before) {
+                    st.delta = {
+                        dx: d.x - st.before.pos.x,
+                        dy: d.y - st.before.pos.y,
+                        ds: d.s - st.before.scl
+                    };
+                }
+            }
+            document.getElementById(infoId).textContent = luInfoText(st);
         });
     }
 
@@ -1353,20 +1358,20 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     'if(ok&&c2.projectItem)names.push(c2.projectItem.name);' +
                 '}' +
             '}' +
-            'return JSON.stringify(names);' +
+            'return names.join("|||");' +
             '}catch(e){return "ERR: "+e.message;}})()',
             function (res) {
                 luLog('mark: ' + res);
-                try {
-                    var arr = JSON.parse(res);
-                    for (var i = 0; i < arr.length; i++) {
-                        if (luState.toDelete.indexOf(arr[i]) < 0) luState.toDelete.push(arr[i]);
-                    }
-                    document.getElementById('luDelInfo').textContent =
-                        luState.toDelete.length + ' clip(s): ' + luState.toDelete.join(', ');
-                } catch (e) {
-                    document.getElementById('luDelInfo').textContent = res || 'ERR';
+                if (res && res.indexOf('ERR:') === 0) {
+                    document.getElementById('luDelInfo').textContent = res;
+                    return;
                 }
+                var arr = (res && res.length) ? res.split('|||').filter(function(x) { return x.length > 0; }) : [];
+                for (var i = 0; i < arr.length; i++) {
+                    if (luState.toDelete.indexOf(arr[i]) < 0) luState.toDelete.push(arr[i]);
+                }
+                document.getElementById('luDelInfo').textContent =
+                    luState.toDelete.length ? luState.toDelete.length + ' clip(s): ' + luState.toDelete.join(', ') : 'none marked';
             }
         );
     });
