@@ -1,10 +1,10 @@
-/* Course Builder Panel v111.10 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v111.11 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v111.10</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v111.11</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -1486,16 +1486,16 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 'for(var _ci=0;_ci<_comps.numItems;_ci++){var _comp=_comps[_ci],_cdn=_comp.displayName;' +
                     'if(_cdn.indexOf("Motion")>=0||_cdn.indexOf("Movimiento")>=0){' +
                         'for(var _pi=0;_pi<_comp.properties.numItems;_pi++){var _p=_comp.properties[_pi],_pn=_p.displayName;' +
-                            'if(_pn.indexOf("Pos")===0){try{_p.setValue([px,py],true);}catch(e){}}' +
-                            'if(_pn==="Scale"||_pn==="Escala"){try{_p.setValue(sc,true);}catch(e){}}' +
+                            'if(_pn.indexOf("Pos")===0){try{_p.setValue([px,py]);}catch(e){results.push("setPosERR:"+e.message);}}' +
+                            'if(_pn==="Scale"||_pn==="Escala"){try{_p.setValue(sc);}catch(e){results.push("setScERR:"+e.message);}}' +
                         '}' +
                     '}' +
                     'if(_cdn==="Crop"){' +
                         'for(var _pi2=0;_pi2<_comp.properties.numItems;_pi2++){var _p2=_comp.properties[_pi2],_pn2=_p2.displayName;' +
-                            'if(_pn2.indexOf("Left")>=0){try{_p2.setValue(cl,true);}catch(e){}}' +
-                            'else if(_pn2.indexOf("Top")>=0){try{_p2.setValue(ct,true);}catch(e){}}' +
-                            'else if(_pn2.indexOf("Right")>=0){try{_p2.setValue(cr,true);}catch(e){}}' +
-                            'else if(_pn2.indexOf("Bot")>=0){try{_p2.setValue(cb,true);}catch(e){}}' +
+                            'if(_pn2.indexOf("Left")>=0){try{_p2.setValue(cl);}catch(e){results.push("setCropERR:"+e.message);}}' +
+                            'else if(_pn2.indexOf("Top")>=0){try{_p2.setValue(ct);}catch(e){}}' +
+                            'else if(_pn2.indexOf("Right")>=0){try{_p2.setValue(cr);}catch(e){}}' +
+                            'else if(_pn2.indexOf("Bot")>=0){try{_p2.setValue(cb);}catch(e){}}' +
                         '}' +
                     '}' +
                 '}}catch(_me){results.push("motERR:"+_me.message);}}';
@@ -1506,6 +1506,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
             var adx=luR(a.delta.dx),ady=luR(a.delta.dy),ads=luR(a.delta.ds);
             var adcl=luR(a.delta.dcl||0),adct=luR(a.delta.dct||0),adcr=luR(a.delta.dcr||0),adcb=luR(a.delta.dcb||0);
             jsx += 'if(' + a.trackIdx + '<seq.videoTracks.numTracks){var _aTrk=seq.videoTracks[' + a.trackIdx + '];' +
+                'results.push("aV' + (a.trackIdx+1) + ':clips="+_aTrk.clips.numItems);' +
                 'for(var _ai=0;_ai<_aTrk.clips.numItems;_ai++){var _ac=_aTrk.clips[_ai];if(!_ac.projectItem)continue;' +
                     'try{var _ax=960,_ay=540,_asc=100,_acl=0,_act=0,_acr=0,_acb=0;' +
                     'var _acomps=_ac.components;' +
@@ -1538,6 +1539,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
             var tdx=luR(tb.delta.dx),tdy=luR(tb.delta.dy),tds=luR(tb.delta.ds);
             var tdcl=luR(tb.delta.dcl||0),tdct=luR(tb.delta.dct||0),tdcr=luR(tb.delta.dcr||0),tdcb=luR(tb.delta.dcb||0);
             jsx += 'if(' + tb.trackIdx + '<seq.videoTracks.numTracks){var _tTrk=seq.videoTracks[' + tb.trackIdx + '];' +
+                'results.push("bV' + (tb.trackIdx+1) + ':clips="+_tTrk.clips.numItems);' +
                 'for(var _ti=0;_ti<_tTrk.clips.numItems;_ti++){var _tc=_tTrk.clips[_ti];if(!_tc.projectItem)continue;' +
                     'try{var _tx=960,_ty=540,_tsc=100,_tcl=0,_tct=0,_tcr=0,_tcb=0;' +
                     'var _tcomps=_tc.components;' +
