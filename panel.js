@@ -1,10 +1,10 @@
-/* Course Builder Panel v111.11 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v111.48 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v111.11</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v111.48</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -116,7 +116,8 @@ document.getElementById('app').innerHTML = [
     '      <button class="btn-small" id="luExportDir">Output folder...</button>',
     '    </div>',
     '    <div class="lu-info" id="luExportInfo">&mdash;</div>',
-    '    <button class="btn-at" style="margin-top:6px;width:100%" id="luBtnExport">&#128228; Send to Media Encoder</button>',
+    '    <button class="btn-at" style="margin-top:6px;width:100%" id="luBtnExport">&#128270; Preview export list</button>',
+    '    <button class="btn-at" style="margin-top:6px;width:100%;display:none;background:#2a7a3b" id="luBtnQueue">&#128228; Queue in Media Encoder</button>',
     '  </div>',
     '</div>',
     '<div class="log-header">',
@@ -1304,17 +1305,23 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                             'if(_rv&&_rv.length>=2){px=parseFloat(_rv[0]);py=parseFloat(_rv[1]);}' +
                             'else if(_rv&&_rv.x!==undefined){px=parseFloat(_rv.x);py=parseFloat(_rv.y);}}' +
                         'if((_pn==="Scale"||_pn==="Escala")&&_rv!==null){dbg+=" sc=["+_rv+"]";sc=parseFloat(_rv)||100;}' +
+                        'if(_pn==="Crop Left"||_pn==="Crop Top"||_pn==="Crop Right"||_pn==="Crop Bottom"){' +
+                            'var _mcv=parseFloat(_rv)||0;' +
+                            'if(_pn==="Crop Left"&&_mcv>cl)cl=_mcv;' +
+                            'else if(_pn==="Crop Top"&&_mcv>ct)ct=_mcv;' +
+                            'else if(_pn==="Crop Right"&&_mcv>cr)cr=_mcv;' +
+                            'else if(_pn==="Crop Bottom"&&_mcv>cb)cb=_mcv;}' +
                     '}' +
                 '}' +
-                'if(cdn==="Crop"){' +
+                'if(cdn==="Crop"||cdn==="Recortar"){' +
                     'for(var _pi2=0;_pi2<comp.properties.numItems;_pi2++){' +
                         'var _p2=comp.properties[_pi2],_pn2=_p2.displayName;' +
                         'var _rv2=null;try{_rv2=_p2.getValue();}catch(_ge2){try{_rv2=_p2.value;}catch(_ve2){}}' +
                         'var _cfv=parseFloat(_rv2)||0;' +
-                        'if(_pn2.indexOf("Left")>=0)cl=_cfv;' +
-                        'else if(_pn2.indexOf("Top")>=0)ct=_cfv;' +
-                        'else if(_pn2.indexOf("Right")>=0)cr=_cfv;' +
-                        'else if(_pn2.indexOf("Bot")>=0)cb=_cfv;' +
+                        'if(_pn2.indexOf("Left")>=0&&_cfv>cl)cl=_cfv;' +
+                        'else if(_pn2.indexOf("Top")>=0&&_cfv>ct)ct=_cfv;' +
+                        'else if(_pn2.indexOf("Right")>=0&&_cfv>cr)cr=_cfv;' +
+                        'else if(_pn2.indexOf("Bot")>=0&&_cfv>cb)cb=_cfv;' +
                     '}' +
                 '}' +
             '}' +
@@ -1341,7 +1348,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 document.getElementById(infoId).textContent = 'ERR: bad response: ' + res;
                 return;
             }
-            if (parts[9]) { luLog('DBG: ' + parts[9]); document.getElementById(infoId).textContent = 'DBG: ' + parts[9]; return; }
+            if (parts[9]) { luLog('DBG: ' + parts[9]); }
             var d = {
                 n:  parts[0], t: parseInt(parts[1], 10),
                 x:  parseFloat(parts[2]), y: parseFloat(parts[3]), s: parseFloat(parts[4]),
@@ -1457,22 +1464,38 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         if (singleSeq) {
             jsx += 'var _as=app.project.activeSequence;if(_as)seqs.push(_as);';
         } else {
-            jsx += 'function collectSeqs(item,arr){' +
-                'try{var s=item.getSequence();if(s){var nm=item.name.toLowerCase();' +
-                    'if(nm.indexOf("webcam")<0&&nm.indexOf("nested")<0&&nm.indexOf("_preview")<0&&nm.indexOf("test")<0)arr.push(s);}}catch(e){}' +
-                'try{var ch=item.children;for(var k=0;k<ch.numItems;k++)collectSeqs(ch[k],arr);}catch(e){}' +
-            '}collectSeqs(app.project.rootItem,seqs);';
+            jsx += 'try{var _allS=app.project.sequences;' +
+                'if(_allS&&_allS.numSequences>0){results.push("api:n="+_allS.numSequences);' +
+                    'for(var _qi=0;_qi<_allS.numSequences;_qi++){var _qs=_allS[_qi];if(!_qs)continue;' +
+                        'var _qnm=_qs.name.toLowerCase();' +
+                        'if(_qnm.indexOf("webcam")<0&&_qnm.indexOf("nested")<0&&_qnm.indexOf(" copy")<0&&_qnm.indexOf("test")<0&&_qnm.indexOf("preview")<0&&_qnm.indexOf("s&s")<0&&_qnm.indexOf("short and sweet")<0&&_qnm.indexOf("short&sweet")<0)' +
+                            'seqs.push(_qs);}' +
+                'results.push("seqs:n="+seqs.length);' +
+                '}}catch(_qe){results.push("seqsAPIerr:"+_qe.message);}' +
+                'if(!seqs.length){' +
+                    'function collectSeqs(item,arr){' +
+                        'try{var s=item.getSequence();if(s){var nm=item.name.toLowerCase();' +
+                            'if(nm.indexOf("webcam")<0&&nm.indexOf("nested")<0&&nm.indexOf(" copy")<0&&nm.indexOf("test")<0)arr.push(s);}}catch(e){}' +
+                        'try{var ch=item.children;for(var k=0;k<ch.numItems;k++)collectSeqs(ch[k],arr);}catch(e){}' +
+                    '}collectSeqs(app.project.rootItem,seqs);' +
+                    'results.push("rootFallback:n="+seqs.length);' +
+                '}';
         }
 
         jsx += 'if(!seqs.length)return "ERR: no sequences found";';
 
         if (bgPath) {
             jsx += 'var bgItem=null;var _bgp="' + bgPath + '";' +
-                'function findBg(item){' +
-                    'try{if(item.getMediaPath()===_bgp)return item;}catch(e){}' +
-                    'try{var ch=item.children;for(var fk=0;fk<ch.numItems;fk++){var ff=findBg(ch[fk]);if(ff)return ff;}}catch(e){}' +
-                    'return null;}' +
-                'bgItem=findBg(app.project.rootItem);' +
+                'function findBg(){' +
+                    'try{var _sAll=app.project.sequences;' +
+                    'for(var _sbi=0;_sbi<_sAll.numSequences;_sbi++){var _sbS=_sAll[_sbi];if(!_sbS)continue;' +
+                        'for(var _sbvi=0;_sbvi<_sbS.videoTracks.numTracks;_sbvi++){var _sbvt=_sbS.videoTracks[_sbvi];' +
+                            'for(var _sbci=0;_sbci<_sbvt.clips.numItems;_sbci++){var _sbcl=_sbvt.clips[_sbci];' +
+                                'if(!_sbcl.projectItem)continue;' +
+                                'try{if(_sbcl.projectItem.getMediaPath()===_bgp)return _sbcl.projectItem;}catch(_sbe){}' +
+                            '}}}' +
+                    '}catch(_sbe2){}return null;}' +
+                'bgItem=findBg();' +
                 'if(!bgItem)results.push("WARN: bg not in project");';
         }
 
@@ -1482,15 +1505,25 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         /* applyMot: apply pos/scale delta to Motion component; apply crop delta to Crop component */
         jsx += 'function getRV(p){var v=null;try{v=p.getValue();}catch(e){try{v=p.value;}catch(e2){}}return v;}' +
             'function applyMot(clip,px,py,sc,cl,ct,cr,cb){' +
-                'try{var _comps=clip.components;' +
+                'try{var _comps=clip.components;var _cropFound=false;' +
                 'for(var _ci=0;_ci<_comps.numItems;_ci++){var _comp=_comps[_ci],_cdn=_comp.displayName;' +
                     'if(_cdn.indexOf("Motion")>=0||_cdn.indexOf("Movimiento")>=0){' +
                         'for(var _pi=0;_pi<_comp.properties.numItems;_pi++){var _p=_comp.properties[_pi],_pn=_p.displayName;' +
-                            'if(_pn.indexOf("Pos")===0){try{_p.setValue([px,py]);}catch(e){results.push("setPosERR:"+e.message);}}' +
-                            'if(_pn==="Scale"||_pn==="Escala"){try{_p.setValue(sc);}catch(e){results.push("setScERR:"+e.message);}}' +
+                            'if(_pn.indexOf("Pos")===0){' +
+                                'var _pBefore=getRV(_p);' +
+                                'try{_p.setValue([px,py]);}catch(e){results.push("setPosERR:"+e.message);}' +
+                                'var _pAfter=getRV(_p);' +
+                                'results.push("pos:want=["+px+","+py+"]|was="+JSON.stringify(_pBefore)+"|now="+JSON.stringify(_pAfter));' +
+                            '}' +
+                            'if(_pn==="Scale"||_pn==="Escala"){' +
+                                'var _sBefore=getRV(_p);' +
+                                'try{_p.setValue(sc);}catch(e){results.push("setScERR:"+e.message);}' +
+                                'var _sAfter=getRV(_p);' +
+                                'results.push("sc:want="+sc+"|was="+_sBefore+"|now="+_sAfter);' +
+                            '}' +
                         '}' +
                     '}' +
-                    'if(_cdn==="Crop"){' +
+                    'if(_cdn==="Crop"||_cdn==="Recortar"){_cropFound=true;' +
                         'for(var _pi2=0;_pi2<_comp.properties.numItems;_pi2++){var _p2=_comp.properties[_pi2],_pn2=_p2.displayName;' +
                             'if(_pn2.indexOf("Left")>=0){try{_p2.setValue(cl);}catch(e){results.push("setCropERR:"+e.message);}}' +
                             'else if(_pn2.indexOf("Top")>=0){try{_p2.setValue(ct);}catch(e){}}' +
@@ -1498,15 +1531,126 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                             'else if(_pn2.indexOf("Bot")>=0){try{_p2.setValue(cb);}catch(e){}}' +
                         '}' +
                     '}' +
-                '}}catch(_me){results.push("motERR:"+_me.message);}}';
+                '}' +
+                'if(!_cropFound){' +
+                    'for(var _ci2=0;_ci2<_comps.numItems;_ci2++){var _comp2=_comps[_ci2];' +
+                        'if(_comp2.displayName.indexOf("Motion")>=0||_comp2.displayName.indexOf("Movimiento")>=0){' +
+                            'for(var _pi3=0;_pi3<_comp2.properties.numItems;_pi3++){var _p3=_comp2.properties[_pi3],_pn3=_p3.displayName;' +
+                                'if(_pn3==="Crop Left"){try{_p3.setValue(cl);}catch(e){}}' +
+                                'else if(_pn3==="Crop Top"){try{_p3.setValue(ct);}catch(e){}}' +
+                                'else if(_pn3==="Crop Right"){try{_p3.setValue(cr);}catch(e){}}' +
+                                'else if(_pn3==="Crop Bottom"){try{_p3.setValue(cb);}catch(e){}}' +
+                            '}' +
+                        '}' +
+                    '}' +
+                '}' +
+                '}catch(_me){results.push("motERR:"+_me.message);}}';
 
-        jsx += 'for(var _si=0;_si<seqs.length;_si++){var seq=seqs[_si];if(!seq)continue;results.push("---"+seq.name);';
+        jsx += 'function findSeqByName(nm){' +
+            'try{var _sAll=app.project.sequences;' +
+                'for(var _sfi=0;_sfi<_sAll.numSequences;_sfi++){if(_sAll[_sfi]&&_sAll[_sfi].name===nm)return _sAll[_sfi];}' +
+            '}catch(_sfe){}return null;}' +
+            'function findProjItem(nm,path){' +
+                'function _spi(item){if(!item)return null;if(item.name===nm&&item.type!==2)return item;' +
+                    'try{if(item.children)for(var _i=0;_i<item.children.numItems;_i++){var _r=_spi(item.children[_i]);if(_r)return _r;}}catch(e){}return null;}' +
+                'var _it=_spi(app.project.rootItem);' +
+                'if(!_it&&path){try{app.project.importFiles([path],true,app.project.rootItem,false);_it=_spi(app.project.rootItem);}catch(e){}}' +
+                'return _it;}' +
+            'var _luFiItem=findProjItem("fade_in.mov","/Users/raulmartinez/Desktop/chess.com/AI/Video Editing Assets IA/fade_in.mov");' +
+            'var _luFoItem=findProjItem("fade_out.mov","/Users/raulmartinez/Desktop/chess.com/AI/Video Editing Assets IA/fade_out.mov");' +
+            'var _luIoItem=findProjItem("Intro-Outro (powered by Chessbase)_no_audio.mp4",null);' +
+            'results.push("fades:fi="+(_luFiItem?"ok":"notFound")+",fo="+(_luFoItem?"ok":"notFound")+",io="+(_luIoItem?"ok":"notFound"));' +
+            'function copyComps(src,dst){' +
+                'try{var _sC2=src.components,_dC2=dst.components;' +
+                'for(var _sci=0;_sci<_sC2.numItems;_sci++){var _sComp=_sC2[_sci];var _dComp=null;' +
+                    'for(var _dci=0;_dci<_dC2.numItems;_dci++){if(_dC2[_dci].displayName===_sComp.displayName){_dComp=_dC2[_dci];break;}}' +
+                    'if(!_dComp)continue;' +
+                    'for(var _spi=0;_spi<_sComp.properties.numItems&&_spi<_dComp.properties.numItems;_spi++){' +
+                        'try{var _sprop=_sComp.properties[_spi],_dprop=_dComp.properties[_spi];' +
+                            'var _sv=getRV(_sprop);if(_sv!==null&&_sv!==undefined){try{_dprop.setValue(_sv);}catch(_pse){}}' +
+                        '}catch(_pe){}' +
+                    '}' +
+                '}}catch(_cce){}}';
+
+
+        jsx += 'for(var _si=0;_si<seqs.length;_si++){var _oSeq=seqs[_si];if(!_oSeq)continue;' +
+            'var _onm=_oSeq.name.toLowerCase();' +
+            'if(_onm==="2026"||_onm.indexOf("_2026")>=0||_onm.indexOf(" copy")>=0||_onm.indexOf("preview")>=0||_onm.indexOf("s&s")>=0||_onm.indexOf("short and sweet")>=0||_onm.indexOf("short&sweet")>=0){results.push("skip:"+_oSeq.name);continue;}' +
+            'var _cpNm=_oSeq.name+"_2026";' +
+            'var seq=findSeqByName(_cpNm);' +
+            'if(!seq){' +
+                'var _dupOk=false;' +
+                // Method 1: clone() — captures all effects; find new seq by before/after scan
+                'if(!_dupOk){try{if(typeof _oSeq.clone==="function"){' +
+                    'var _nmsBefore=[];var _allSC=app.project.sequences;' +
+                    'for(var _bi=0;_bi<_allSC.numSequences;_bi++){if(_allSC[_bi])_nmsBefore.push(_allSC[_bi].name);}' +
+                    'var _cs=_oSeq.clone();' +
+                    'if(_cs){' +
+                        'try{_cs.projectItem.name=_cpNm;}catch(_cn){}' +
+                        'try{_cs.name=_cpNm;}catch(_cn2){}' +
+                        'seq=findSeqByName(_cpNm);' +
+                        'if(!seq){' +
+                            'var _allSA=app.project.sequences;' +
+                            'for(var _ai=0;_ai<_allSA.numSequences;_ai++){if(!_allSA[_ai])continue;' +
+                                'var _found=false;for(var _bi2=0;_bi2<_nmsBefore.length;_bi2++){if(_nmsBefore[_bi2]===_allSA[_ai].name){_found=true;break;}}' +
+                                'if(!_found){seq=_allSA[_ai];' +
+                                    'try{seq.projectItem.name=_cpNm;}catch(_cn3){}' +
+                                    'try{seq.name=_cpNm;}catch(_cn4){};break;}}' +
+                        '}' +
+                        'if(seq){results.push("dup(clone):"+seq.name+">"+_cpNm);_dupOk=true;}' +
+                    '}' +
+                '}}catch(_ce){results.push("cloneERR:"+_ce.message);}}' +
+                // Method 3: createNewSequence with preset file path (no dialog)
+                'if(!_dupOk){try{' +
+                    'var _frT2=10594584000;try{var _vfr=_oSeq.videoFrameRate;if(_vfr&&_vfr.ticks)_frT2=_vfr.ticks;}catch(_fre){}' +
+                    'var _sqDir="/Applications/Adobe Premiere Pro 2025/Adobe Premiere Pro 2025.app/Contents/Settings/SequencePresets/HD 1080p/HD 1080p ";' +
+                    'var _sqSuf;' +
+                    'if(_frT2===10160640000)_sqSuf="25 fps.sqpreset";' +
+                    'else if(_frT2===10594584000)_sqSuf="23.976 fps.sqpreset";' +
+                    'else if(_frT2>=8480000000&&_frT2<=8490000000)_sqSuf="29.97 fps.sqpreset";' +
+                    'else if(_frT2===5080320000)_sqSuf="50 fps.sqpreset";' +
+                    'else _sqSuf="23.976 fps.sqpreset";' +
+                    'var _sqP=_sqDir+_sqSuf;' +
+                    'var _ns=app.project.createNewSequence(_cpNm,_sqP);if(_ns){' +
+                    'var _onVT=_oSeq.videoTracks.numTracks,_onAT=_oSeq.audioTracks.numTracks;' +
+                    'for(var _vti=0;_vti<_onVT&&_vti<_ns.videoTracks.numTracks;_vti++){var _ovt=_oSeq.videoTracks[_vti],_nvt=_ns.videoTracks[_vti];' +
+                        'for(var _ci2=0;_ci2<_ovt.clips.numItems;_ci2++){var _oc=_ovt.clips[_ci2];if(!_oc.projectItem)continue;' +
+                            'try{var _nc2=_nvt.overwriteClip(_oc.projectItem,_oc.start);if(_nc2){try{_nc2.end=_oc.end;}catch(_ee2){};copyComps(_oc,_nc2);}}catch(_ce2){}' +
+                        '}' +
+                    '}' +
+                    'for(var _ati=0;_ati<_onAT&&_ati<_ns.audioTracks.numTracks;_ati++){var _oat=_oSeq.audioTracks[_ati],_nat=_ns.audioTracks[_ati];' +
+                        'for(var _aci2=0;_aci2<_oat.clips.numItems;_aci2++){var _oac=_oat.clips[_aci2];if(!_oac.projectItem)continue;' +
+                            'try{var _nac2=_nat.overwriteClip(_oac.projectItem,_oac.start);if(_nac2){try{_nac2.end=_oac.end;}catch(_eea){}}}catch(_ace2){}' +
+                        '}' +
+                    '}' +
+                    'seq=_ns;results.push("dup(new):"+_cpNm);_dupOk=true;}' +
+                '}catch(_ne){results.push("newSeqERR:"+_ne.message);}}' +
+                'if(!_dupOk){results.push("noMethod:"+_oSeq.name+"|clone="+typeof _oSeq.clone+"|projDup="+typeof app.project.duplicateSequence+"|createNewSeq="+typeof app.project.createNewSequence);}' +
+            '}else results.push("exists:"+_cpNm);' +
+            'if(!seq){results.push("skip:"+_oSeq.name);continue;}' +
+            // Move seq to root bin "_2026"
+            'if(seq&&seq.projectItem){try{' +
+                'var _b26=null;var _ri=app.project.rootItem;' +
+                'for(var _bi=0;_bi<_ri.children.numItems;_bi++){var _bc=_ri.children[_bi];' +
+                    'try{if(_bc.name==="_2026"&&_bc.children!==undefined){_b26=_bc;break;}}catch(_bce){}}' +
+                'if(!_b26){try{_b26=_ri.createBin("_2026");results.push("bin2026:created");}catch(_bce2){results.push("bin2026ERR:"+_bce2.message);}}' +
+                'if(_b26){try{seq.projectItem.moveBin(_b26);results.push("bin2026:moved:"+seq.name);}catch(_mbe){results.push("moveBin2026ERR:"+_mbe.message);}}' +
+            '}catch(_bie){results.push("bin2026ERR:"+_bie.message);}}' +
+            'results.push("---"+seq.name);' +
+            'var _dbgS="nT="+seq.videoTracks.numTracks;' +
+            'for(var _dbvi=0;_dbvi<seq.videoTracks.numTracks;_dbvi++){var _dbvt=seq.videoTracks[_dbvi];' +
+                '_dbgS+="|V"+(_dbvi+1)+"="+_dbvt.clips.numItems;' +
+                'for(var _dbci=0;_dbci<_dbvt.clips.numItems;_dbci++){var _dbc=_dbvt.clips[_dbci];' +
+                    'if(_dbc.projectItem)_dbgS+="["+_dbc.projectItem.name+"]";' +
+                '}' +
+            '}results.push("SEQMAP:"+_dbgS);';
 
         if (a.delta) {
             var adx=luR(a.delta.dx),ady=luR(a.delta.dy),ads=luR(a.delta.ds);
-            var adcl=luR(a.delta.dcl||0),adct=luR(a.delta.dct||0),adcr=luR(a.delta.dcr||0),adcb=luR(a.delta.dcb||0);
-            jsx += 'if(' + a.trackIdx + '<seq.videoTracks.numTracks){var _aTrk=seq.videoTracks[' + a.trackIdx + '];' +
-                'results.push("aV' + (a.trackIdx+1) + ':clips="+_aTrk.clips.numItems);' +
+            var a2cl=luR(a.after&&a.after.crop?a.after.crop.l:0),a2ct=luR(a.after&&a.after.crop?a.after.crop.t:0);
+            var a2cr=luR(a.after&&a.after.crop?a.after.crop.r:0),a2cb=luR(a.after&&a.after.crop?a.after.crop.b:0);
+            jsx += 'results.push("AUTOR:track=' + a.trackIdx + ',dx=' + adx + ',ds=' + ads + '");' +
+                'if(' + a.trackIdx + '<seq.videoTracks.numTracks){var _aTrk=seq.videoTracks[' + a.trackIdx + '];' +
                 'for(var _ai=0;_ai<_aTrk.clips.numItems;_ai++){var _ac=_aTrk.clips[_ai];if(!_ac.projectItem)continue;' +
                     'try{var _ax=960,_ay=540,_asc=100,_acl=0,_act=0,_acr=0,_acb=0;' +
                     'var _acomps=_ac.components;' +
@@ -1529,17 +1673,18 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                         '}' +
                     '}' +
                     'applyMot(_ac,_ax+(' + adx + '),_ay+(' + ady + '),_asc+(' + ads + '),' +
-                        '_acl+(' + adcl + '),_act+(' + adct + '),_acr+(' + adcr + '),_acb+(' + adcb + '));' +
-                    'results.push("author[V' + (a.trackIdx + 1) + ']:"+_ac.projectItem.name);' +
+                        a2cl + ',' + a2ct + ',' + a2cr + ',' + a2cb + ');' +
+                    'results.push("author[V' + (a.trackIdx+1) + ']:"+_ac.projectItem.name);' +
                     '}catch(_ae){results.push("authorERR:"+_ae.message);}' +
                 '}}';
         }
 
         if (tb.delta) {
             var tdx=luR(tb.delta.dx),tdy=luR(tb.delta.dy),tds=luR(tb.delta.ds);
-            var tdcl=luR(tb.delta.dcl||0),tdct=luR(tb.delta.dct||0),tdcr=luR(tb.delta.dcr||0),tdcb=luR(tb.delta.dcb||0);
-            jsx += 'if(' + tb.trackIdx + '<seq.videoTracks.numTracks){var _tTrk=seq.videoTracks[' + tb.trackIdx + '];' +
-                'results.push("bV' + (tb.trackIdx+1) + ':clips="+_tTrk.clips.numItems);' +
+            var tb2cl=luR(tb.after&&tb.after.crop?tb.after.crop.l:0),tb2ct=luR(tb.after&&tb.after.crop?tb.after.crop.t:0);
+            var tb2cr=luR(tb.after&&tb.after.crop?tb.after.crop.r:0),tb2cb=luR(tb.after&&tb.after.crop?tb.after.crop.b:0);
+            jsx += 'results.push("BOARD:track=' + tb.trackIdx + ',dx=' + tdx + ',ds=' + tds + '");' +
+                'if(' + tb.trackIdx + '<seq.videoTracks.numTracks){var _tTrk=seq.videoTracks[' + tb.trackIdx + '];' +
                 'for(var _ti=0;_ti<_tTrk.clips.numItems;_ti++){var _tc=_tTrk.clips[_ti];if(!_tc.projectItem)continue;' +
                     'try{var _tx=960,_ty=540,_tsc=100,_tcl=0,_tct=0,_tcr=0,_tcb=0;' +
                     'var _tcomps=_tc.components;' +
@@ -1562,8 +1707,8 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                         '}' +
                     '}' +
                     'applyMot(_tc,_tx+(' + tdx + '),_ty+(' + tdy + '),_tsc+(' + tds + '),' +
-                        '_tcl+(' + tdcl + '),_tct+(' + tdct + '),_tcr+(' + tdcr + '),_tcb+(' + tdcb + '));' +
-                    'results.push("board[V' + (tb.trackIdx + 1) + ']:"+_tc.projectItem.name);' +
+                        tb2cl + ',' + tb2ct + ',' + tb2cr + ',' + tb2cb + ');' +
+                    'results.push("board[V' + (tb.trackIdx+1) + ']:"+_tc.projectItem.name);' +
                     '}catch(_te){results.push("boardERR:"+_te.message);}' +
                 '}}';
         }
@@ -1579,10 +1724,130 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         if (bgPath) {
             jsx += 'if(bgItem){var _bgTrk=seq.videoTracks[0];' +
                 'for(var _brci=_bgTrk.clips.numItems-1;_brci>=0;_brci--){try{_bgTrk.clips[_brci].remove(false,false);}catch(e){}}' +
-                'try{var _bgT=new Time();_bgT.seconds=0;_bgTrk.overwriteClip(bgItem,_bgT);' +
+                'try{var _bgT=new Time();_bgT.ticks=0;_bgTrk.overwriteClip(bgItem,_bgT);' +
                     'var _bgC=_bgTrk.clips[0];if(_bgC){var _bgEnd=new Time();_bgEnd.seconds=seq.end.seconds;try{_bgC.end=_bgEnd;}catch(e){}}' +
                     'results.push("bg:replaced V1");}catch(e){results.push("bgERR:"+e.message);}}';
         }
+
+        // Delete unwanted clips from video tracks (Intro-Outro Chessable, Overlay, and ALL adjustment layers)
+        jsx += 'for(var _ovi=0;_ovi<seq.videoTracks.numTracks;_ovi++){var _ovt=seq.videoTracks[_ovi];var _oDel=[];' +
+            'for(var _oci=0;_oci<_ovt.clips.numItems;_oci++){var _ocl=_ovt.clips[_oci];' +
+                'if(!_ocl.projectItem)continue;var _ocn=_ocl.projectItem.name;var _ocnL=_ocn.toLowerCase();' +
+                'if(_ocn==="Overlay 1080p (Previews).mov"' +
+                    '||(_ocn.indexOf("Intro-Outro")>=0&&_ocn.indexOf("powered")<0)' +
+                    '||_ocnL.indexOf("capa de ajuste")>=0||_ocnL.indexOf("adjustment layer")>=0' +
+                ')_oDel.push({i:_oci,n:_ocn});}' +
+            'for(var _ori=_oDel.length-1;_ori>=0;_ori--){' +
+                'try{_ovt.clips[_oDel[_ori].i].remove(false,false);results.push("del:"+_oDel[_ori].n);}' +
+                'catch(_oe){results.push("delERR:"+_oe.message);}}}';
+        // Delete transition_cuts.wav from audio tracks
+        jsx += 'for(var _axi=0;_axi<seq.audioTracks.numTracks;_axi++){var _axt=seq.audioTracks[_axi];var _axDel=[];' +
+            'for(var _axci=0;_axci<_axt.clips.numItems;_axci++){var _axcl=_axt.clips[_axci];' +
+                'if(!_axcl.projectItem)continue;' +
+                'if(_axcl.projectItem.name==="transition_cuts.wav")_axDel.push({i:_axci,n:_axcl.projectItem.name});}' +
+            'for(var _axri=_axDel.length-1;_axri>=0;_axri--){' +
+                'try{_axt.clips[_axDel[_axri].i].remove(false,false);results.push("del:"+_axDel[_axri].n);}' +
+                'catch(_axe){results.push("delERR:"+_axe.message);}}}';
+
+        // Find first content clip start, delete pre-content clips, then move all clips left to frame 0
+        var inTrkIdx = (luState.autor && luState.autor.trackIdx !== undefined) ? luState.autor.trackIdx : 1;
+        jsx += 'try{var _inTrk=seq.videoTracks[' + inTrkIdx + '];if(_inTrk&&_inTrk.clips.numItems>0){' +
+            'var _minT=parseFloat(_inTrk.clips[0].start.ticks)||0;' +
+            'for(var _fci=1;_fci<_inTrk.clips.numItems;_fci++){var _fcs=parseFloat(_inTrk.clips[_fci].start.ticks)||0;if(_fcs<_minT)_minT=_fcs;}' +
+            'results.push("minT:"+_minT);' +
+            // Delete pre-content clips on all video tracks (those ending at or before content start)
+            'for(var _pvi=0;_pvi<seq.videoTracks.numTracks;_pvi++){var _pvt=seq.videoTracks[_pvi];var _pDel=[];' +
+                'for(var _pci=0;_pci<_pvt.clips.numItems;_pci++){var _pcl=_pvt.clips[_pci];' +
+                    'if(parseFloat(_pcl.end.ticks)<=_minT)_pDel.push(_pci);}' +
+                'for(var _pri=_pDel.length-1;_pri>=0;_pri--){' +
+                    'try{_pvt.clips[_pDel[_pri]].remove(false,false);results.push("delPre");}catch(_pe){}}}' +
+            // Move all clips left by _minT (skip Intro-Outro — has inPoint=0 and would stretch)
+            'if(_minT>0){' +
+                'var _mvTrks=[];' +
+                'for(var _mvi=0;_mvi<seq.videoTracks.numTracks;_mvi++)_mvTrks.push(seq.videoTracks[_mvi]);' +
+                'for(var _mai=0;_mai<seq.audioTracks.numTracks;_mai++)_mvTrks.push(seq.audioTracks[_mai]);' +
+                'var _mvOk=0,_mvErr=0;' +
+                'for(var _mti=0;_mti<_mvTrks.length;_mti++){var _mtrk=_mvTrks[_mti];' +
+                    'var _mca=[];for(var _mci=0;_mci<_mtrk.clips.numItems;_mci++){' +
+                        'var _mc=_mtrk.clips[_mci];_mca.push({c:_mc,s:parseFloat(_mc.start.ticks)||0,n:(_mc.projectItem?_mc.projectItem.name:"")});}' +
+                    '_mca.sort(function(a,b){return a.s-b.s;});' +
+                    'for(var _mci2=0;_mci2<_mca.length;_mci2++){' +
+                        'var _mstart=_mca[_mci2].s;' +
+                        'if(_mstart<_minT)continue;' +
+                        'if(_mca[_mci2].n.indexOf("Intro-Outro")>=0)continue;' + // skip: inPoint=0 → would stretch
+                        'var _mns=_mstart-_minT;' +
+                        'var _mOldEnd=parseFloat(_mca[_mci2].c.end.ticks)||0;' +
+                        'var _mne=_mOldEnd-_minT;' +
+                        'try{' +
+                            'var _mnet=new Time();_mnet.ticks=String(_mne);_mca[_mci2].c.end=_mnet;' + // trim end first (preserves source out-point)
+                            'var _mnt=new Time();_mnt.ticks=String(_mns);_mca[_mci2].c.start=_mnt;' + // then move start
+                            '_mvOk++;' +
+                        '}catch(_mce){_mvErr++;}}' +
+                '}' +
+                'results.push("moveClips:ok="+_mvOk+",err="+_mvErr);' +
+            '}' +
+            'try{var _inPt=new Time();_inPt.ticks="0";seq.inPoint=_inPt;results.push("inPoint:0");}catch(_ie2){}' +
+        '}}catch(_ie){results.push("moveERR:"+_ie.message);}';
+
+        // Fade_out: find Intro-Outro (powered) start, place fade_out ENDING there
+        jsx +=
+            'var _fdTrk=seq.videoTracks[seq.videoTracks.numTracks-1];' +
+            'var _ioStart=-1;' +
+            'for(var _iovti=0;_iovti<seq.videoTracks.numTracks;_iovti++){' +
+                'var _iovt=seq.videoTracks[_iovti];' +
+                'for(var _ioci=0;_ioci<_iovt.clips.numItems;_ioci++){' +
+                    'var _iocl=_iovt.clips[_ioci];' +
+                    'if(_iocl.projectItem){var _ionm=_iocl.projectItem.name;' +
+                        'if(_ionm.indexOf("Intro-Outro")>=0&&_ionm.indexOf("powered")>=0){' +
+                            '_ioStart=parseFloat(_iocl.start.ticks)||0;break;}}' +
+                '}if(_ioStart>=0)break;}' +
+            'results.push("ioStart:"+_ioStart);' +
+            'var _ioJustAdded=false;' +
+            // Compute recording end (post-movement) from autor track
+            'var _ioRecEnd=0;' +
+            'try{var _ioRTrk2=seq.videoTracks[' + inTrkIdx + '];' +
+                'for(var _iorfi2=0;_iorfi2<_ioRTrk2.clips.numItems;_iorfi2++){var _iorfe2=parseFloat(_ioRTrk2.clips[_iorfi2].end.ticks)||0;if(_iorfe2>_ioRecEnd)_ioRecEnd=_iorfe2;}' +
+            '}catch(_irfe){}' +
+            // Case A: no Intro-Outro found → add it at recording end
+            'if(_ioStart<0&&_luIoItem&&_ioRecEnd>0){try{' +
+                'var _ioFbTrk=seq.videoTracks.numTracks>3?seq.videoTracks[3]:seq.videoTracks[seq.videoTracks.numTracks-1];' +
+                'var _ioPlT=new Time();_ioPlT.ticks=String(_ioRecEnd);' +
+                '_ioFbTrk.overwriteClip(_luIoItem,_ioPlT);' +
+                '_ioStart=_ioRecEnd;_ioJustAdded=true;results.push("ioAdded@"+_ioRecEnd);' +
+            '}catch(_iofbe){results.push("ioAddErr:"+_iofbe.message);}}' +
+            // Case B: Intro-Outro found at its original (pre-movement) position → re-place it at recording end
+            'if(_ioStart>=0&&!_ioJustAdded&&_ioRecEnd>0&&_ioStart!==_ioRecEnd){try{' +
+                'var _ioMvDone=false;' +
+                'for(var _ioMvTi=0;_ioMvTi<seq.videoTracks.numTracks&&!_ioMvDone;_ioMvTi++){' +
+                    'var _ioMvTrk=seq.videoTracks[_ioMvTi];' +
+                    'for(var _ioMvCi=_ioMvTrk.clips.numItems-1;_ioMvCi>=0&&!_ioMvDone;_ioMvCi--){' +
+                        'var _ioMvCl=_ioMvTrk.clips[_ioMvCi];' +
+                        'if(_ioMvCl.projectItem&&_ioMvCl.projectItem.name.indexOf("Intro-Outro")>=0&&_ioMvCl.projectItem.name.indexOf("powered")>=0){' +
+                            'var _ioMvItem=_ioMvCl.projectItem;' +
+                            'try{_ioMvCl.remove(false,false);' +
+                                'var _ioMvT=new Time();_ioMvT.ticks=String(_ioRecEnd);' +
+                                '_ioMvTrk.overwriteClip(_ioMvItem,_ioMvT);' +
+                                '_ioStart=_ioRecEnd;_ioMvDone=true;results.push("ioMoved@"+_ioRecEnd);' +
+                            '}catch(_ioMe){results.push("ioMoveErr:"+_ioMe.message);}' +
+                        '}' +
+                    '}' +
+                '}' +
+            '}catch(_ioMvE){results.push("ioMvOuterErr:"+_ioMvE.message);}}' +
+            // Place fade_out ending at _ioStart (natural duration, no extension)
+            'if(_luFoItem&&_fdTrk&&_ioStart>=0){try{' +
+                'var _foDur=0;' +
+                'try{_foDur=parseFloat(_luFoItem.getOutPoint().ticks)-parseFloat(_luFoItem.getInPoint().ticks);}catch(_fde){' +
+                    'try{_foDur=parseFloat(_luFoItem.duration.ticks);}catch(_fde2){_foDur=254016000000;}}' +
+                'var _foSt=_ioStart-_foDur;if(_foSt<0)_foSt=0;' +
+                'var _foT=new Time();_foT.ticks=String(_foSt);' +
+                '_fdTrk.overwriteClip(_luFoItem,_foT);' +
+                'results.push("fo:ok@"+_foSt+"/ioStart:"+_ioStart+"/dur:"+_foDur);' +
+            '}catch(_foe){results.push("foERR:"+_foe.message);}}' +
+            // Fade_in: place at position 0 on topmost track
+            'if(_luFiItem&&_fdTrk){try{' +
+                'var _fiT=new Time();_fiT.ticks="0";' +
+                '_fdTrk.overwriteClip(_luFiItem,_fiT);results.push("fi:ok@0");' +
+            '}catch(_fie){results.push("fiERR:"+_fie.message);}}';
 
         jsx += '}return "ok|"+results.join("|");}catch(e){return "ERR: "+e.message;}})()';
         return jsx;
@@ -1623,11 +1888,13 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
     document.getElementById('luBtnTest').addEventListener('click', function () { luRun(true);  });
     document.getElementById('luBtnRun' ).addEventListener('click', function () { luRun(false); });
 
-    var LU_PRESET = '/Users/raulmartinez/Desktop/chess.com/Video Editing Assets 2026/Export Presets/Chessable Vimeo Export 2026.epr';
+    var LU_PRESET = '/Users/raulmartinez/Desktop/chess.com/Chessable Vimeo Export.epr';
 
+    // --- EXPORT: Step 1 — Preview list ---
     document.getElementById('luBtnExport').addEventListener('click', function () {
         var luStatus = document.getElementById('luStatus');
         var luLogEl  = document.getElementById('luLog');
+        var btnQueue = document.getElementById('luBtnQueue');
         if (!luState.exportDir) {
             luStatus.textContent = 'Select output folder first.';
             luStatus.className   = 'status error';
@@ -1635,28 +1902,79 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         }
         var btn = this;
         btn.disabled = true;
+        btnQueue.style.display = 'none';
+        luStatus.textContent = 'Collecting _2026 sequences...';
+        luStatus.className   = 'status running';
+
+        safeEvalScript(
+            '(function(){try{var results=[];var seqs=app.project.sequences;' +
+            'for(var i=0;i<seqs.numSequences;i++){var s=seqs[i];if(!s)continue;' +
+                'var nm=s.name;var nml=nm.toLowerCase();' +
+                'if(nml.indexOf("_2026")<0)continue;' +
+                'if(nml.indexOf("webcam")>=0||nml.indexOf("nested")>=0||nml.indexOf("_preview")>=0||nml.indexOf("test")>=0)continue;' +
+                'results.push(nm);' +
+            '}return "ok|"+results.length+" sequences|"+results.join("|");' +
+            '}catch(e){return "ERR: "+e.message;}})()',
+            function (res) {
+                btn.disabled = false;
+                var ok = res && res.indexOf('ok|') === 0;
+                if (!ok) {
+                    luStatus.textContent = 'ERROR: ' + (res || 'no response');
+                    luStatus.className   = 'status error';
+                    luLogEl.textContent  = res || '';
+                    luLogEl.style.display = 'block';
+                    return;
+                }
+                var parts = res.split('|');
+                var count = parts[1] || '';
+                var names = parts.slice(2);
+                luStatus.textContent = count + ' ready to export';
+                luStatus.className   = 'status done';
+                luLogEl.textContent  = 'Will export:\n' + names.join('\n');
+                luLogEl.style.display = 'block';
+                if (names.length > 0) {
+                    btnQueue.style.display = '';
+                    btnQueue.disabled = false;
+                }
+                luLog('export-preview: ' + res);
+            }
+        );
+    });
+
+    // --- EXPORT: Step 2 — Queue in Media Encoder ---
+    document.getElementById('luBtnQueue').addEventListener('click', function () {
+        var luStatus = document.getElementById('luStatus');
+        var luLogEl  = document.getElementById('luLog');
+        var btn = this;
+        btn.disabled = true;
         luStatus.textContent = 'Queuing in Media Encoder...';
         luStatus.className   = 'status running';
 
-        var exportDir  = luState.exportDir.replace(/\\/g, '/').replace(/"/g, '\\"');
-        var presetPath = LU_PRESET.replace(/"/g, '\\"');
+        var exportDir  = luEscJSX(luState.exportDir.replace(/\\/g, '/').replace(/"/g, '\\"'));
+        var presetPath = luEscJSX(LU_PRESET.replace(/"/g, '\\"'));
 
         safeEvalScript(
-            '(function(){try{var results=[];' +
-            'var presetPath="' + presetPath + '";var exportDir="' + exportDir + '";var seqs=[];' +
-            'function collectSeqs(item,arr){' +
-                'try{var s=item.getSequence();if(s){var nm=item.name.toLowerCase();' +
-                    'if(nm.indexOf("webcam")<0&&nm.indexOf("nested")<0&&nm.indexOf("_preview")<0&&nm.indexOf("test")<0)arr.push(s);}}catch(e){}' +
-                'try{var ch=item.children;for(var k=0;k<ch.numItems;k++)collectSeqs(ch[k],arr);}catch(e){}' +
-            '}collectSeqs(app.project.rootItem,seqs);' +
-            'if(!seqs.length)return "ERR: no sequences found";' +
-            'for(var si=0;si<seqs.length;si++){var seq=seqs[si];if(!seq)continue;' +
-                'var safeName=seq.name.replace(/[\\/\\\\:*?"<>|]/g,"_");' +
-                'var outPath=exportDir+"/"+safeName+".mp4";' +
-                'try{app.encoder.launchAndEncode(seq,outPath,presetPath,0,false);results.push("queued: "+seq.name);}' +
-                'catch(e){results.push("ERR:"+seq.name+":"+e.message);}}' +
-            'return "ok|"+results.length+" sequences queued|"+results.join("|");' +
-            '}catch(e){return "ERR: "+e.message;}})()',
+            '(function(){' +
+            'try{' +
+            'var r=[];' +
+            'var p="' + presetPath + '";' +
+            'var d="' + exportDir + '";' +
+            'try{app.encoder.bind();}catch(_b){}' +
+            'var ss=app.project.sequences;' +
+            'for(var i=0;i<ss.numSequences;i++){' +
+                'var s=ss[i];if(!s)continue;' +
+                'var nml=s.name.toLowerCase();' +
+                'if(nml.indexOf("_2026")<0||nml.indexOf("webcam")>=0||nml.indexOf("nested")>=0||nml.indexOf("test")>=0||nml.indexOf("preview")>=0||nml.indexOf("s&s")>=0||nml.indexOf("short and sweet")>=0||nml.indexOf("short&sweet")>=0)continue;' +
+                'var out=d+"/"+s.name+".mp4";' +
+                'var _ok=false;' +
+                'try{app.encoder.encodeSequence(s,out,p,0,false);_ok=true;}catch(_e1){' +
+                    'try{s.exportAsMediaDirect(out,p,0);_ok=true;}catch(_e2){r.push("E:"+s.name+":"+_e2.message);}' +
+                '}' +
+                'if(_ok)r.push("q:"+s.name);' +
+            '}' +
+            'return "ok|"+r.length+"|"+r.join("|");' +
+            '}catch(e){return "ERR:"+e.message;}' +
+            '})()',
             function (res) {
                 btn.disabled = false;
                 var ok = res && res.indexOf('ok|') === 0;
@@ -1665,7 +1983,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 luStatus.className   = 'status ' + (ok ? 'done' : 'error');
                 luLogEl.textContent  = (res || '').replace(/\|/g, '\n');
                 luLogEl.style.display = 'block';
-                luLog('export: ' + res);
+                luLog('export-queue: ' + res);
             }
         );
     });
