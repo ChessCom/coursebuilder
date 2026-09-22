@@ -345,3 +345,15 @@ header .version {
 }
 .btn-lu-run:hover    { background: #254a5a; }
 .btn-lu-run:disabled { background: #2a2a2a; color: #555; border-color: #333; cursor: default; }
+
+/* Legacy Wistia inputs */
+.lw-inp {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #ccc;
+    border-radius: 3px;
+    padding: 3px 5px;
+    font-size: 11px;
+    box-sizing: border-box;
+}
+.lw-inp:focus { outline: none; border-color: #5a8fa0; }

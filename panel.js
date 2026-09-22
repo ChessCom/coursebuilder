@@ -1,10 +1,10 @@
-/* Course Builder Panel v111.48 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v112.0 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v111.48</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v112.0</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -119,6 +119,49 @@ document.getElementById('app').innerHTML = [
     '    <button class="btn-at" style="margin-top:6px;width:100%" id="luBtnExport">&#128270; Preview export list</button>',
     '    <button class="btn-at" style="margin-top:6px;width:100%;display:none;background:#2a7a3b" id="luBtnQueue">&#128228; Queue in Media Encoder</button>',
     '  </div>',
+    '</div>',
+    '<div class="tool-divider">Legacy Wistia <span class="tool-ver">v1</span></div>',
+    '<div class="section">',
+    '  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">',
+    '    <div>',
+    '      <div class="lu-info" style="margin-bottom:3px"><b>Tablero</b></div>',
+    '      <div style="display:flex;gap:4px;margin-bottom:3px"><input class="lw-inp" id="lwTblX" placeholder="X" style="width:100%"><input class="lw-inp" id="lwTblY" placeholder="Y" style="width:100%"></div>',
+    '      <input class="lw-inp" id="lwTblScale" placeholder="Scale" style="width:100%">',
+    '    </div>',
+    '    <div>',
+    '      <div class="lu-info" style="margin-bottom:3px"><b>Autor</b></div>',
+    '      <div style="display:flex;gap:4px;margin-bottom:3px"><input class="lw-inp" id="lwAutX" placeholder="X" style="width:100%"><input class="lw-inp" id="lwAutY" placeholder="Y" style="width:100%"></div>',
+    '      <input class="lw-inp" id="lwAutScale" placeholder="Scale" style="width:100%">',
+    '    </div>',
+    '  </div>',
+    '  <button class="btn-small" id="lwBtnCapture" style="width:100%;margin-bottom:6px">&#128247; Capture from test</button>',
+    '  <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">',
+    '    <input type="checkbox" id="lwChkIO" checked style="margin:0">',
+    '    <label for="lwChkIO" class="lu-info" style="margin:0;cursor:pointer">Add Intro-Outro at end</label>',
+    '    <button class="btn-small" id="lwBtnIO" style="margin-left:auto">File...</button>',
+    '  </div>',
+    '  <div class="lu-info" id="lwIOInfo" style="margin-bottom:6px;font-style:italic">&mdash;</div>',
+    '  <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">',
+    '    <button class="btn-small" id="lwBtnBg" style="flex-shrink:0">Fondo...</button>',
+    '    <div class="lu-info" id="lwBgInfo" style="margin:0;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">&mdash;</div>',
+    '  </div>',
+    '  <div class="lu-info" id="lwInfo" style="margin-bottom:4px">Abre la secuencia <b>test</b> activa y pulsa Apply.</div>',
+    '  <button class="btn-lu-run" id="lwBtnRun" style="width:100%">&#9654;&#9654; Apply to all chapters</button>',
+    '  <div style="display:flex;align-items:center;gap:6px;margin-top:6px;margin-bottom:4px">',
+    '    <button class="btn-small" id="lwBtnDir" style="flex-shrink:0">Carpeta...</button>',
+    '    <div class="lu-info" id="lwDirInfo" style="margin:0;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">&mdash;</div>',
+    '  </div>',
+    '  <div style="display:flex;gap:6px;margin-top:2px">',
+    '    <button class="btn-small" id="lwBtnPreview" style="flex:1">&#128203; Preview export list</button>',
+    '    <button class="btn-small" id="lwBtnAME" style="flex:1">&#9654; Send to AME</button>',
+    '  </div>',
+    '  <div class="lu-info" id="lwStatus" style="margin-top:6px;display:none"></div>',
+    '</div>',
+    '<div class="tool-divider">PP26 AI Diagnostic <span class="tool-ver">v1</span></div>',
+    '<div class="section">',
+    '  <div class="lu-info" style="margin-bottom:6px">Detecta si PP26 expone API para background removal / object tracking.</div>',
+    '  <button class="btn-at" style="width:100%" id="btnPP26Diag">&#128269; Run diagnostic</button>',
+    '  <pre id="pp26DiagOut" style="margin-top:8px;font-size:9px;max-height:200px;overflow:auto;white-space:pre-wrap;display:none;background:#1a1a1a;padding:6px;border-radius:4px"></pre>',
     '</div>',
     '<div class="log-header">',
     '  <span>Log</span>',
@@ -1988,5 +2031,750 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         );
     });
 })(); // end Legacy Updater
+
+/* ── Legacy Wistia ──────────────────────────────────────────────────────── */
+(function () {
+    var lwBtn     = document.getElementById('lwBtnRun');
+    var lwCapture = document.getElementById('lwBtnCapture');
+    var lwStatus  = document.getElementById('lwStatus');
+    if (!lwBtn) return;
+
+    // inputs
+    var lwInps = {
+        tblX:  document.getElementById('lwTblX'),
+        tblY:  document.getElementById('lwTblY'),
+        tblS:  document.getElementById('lwTblScale'),
+        autX:  document.getElementById('lwAutX'),
+        autY:  document.getElementById('lwAutY'),
+        autS:  document.getElementById('lwAutScale')
+    };
+
+    var lwChkIO  = document.getElementById('lwChkIO');
+    var lwBtnIO  = document.getElementById('lwBtnIO');
+    var lwIOInfo = document.getElementById('lwIOInfo');
+
+    // persist in localStorage
+    var LW_KEY = 'lw_motion_v1';
+    var lwIOPath = '';
+    try {
+        var _saved = JSON.parse(localStorage.getItem(LW_KEY) || '{}');
+        if (_saved.tblX) lwInps.tblX.value = _saved.tblX;
+        if (_saved.tblY) lwInps.tblY.value = _saved.tblY;
+        if (_saved.tblS) lwInps.tblS.value = _saved.tblS;
+        if (_saved.autX) lwInps.autX.value = _saved.autX;
+        if (_saved.autY) lwInps.autY.value = _saved.autY;
+        if (_saved.autS) lwInps.autS.value = _saved.autS;
+        if (_saved.ioPath) { lwIOPath = _saved.ioPath; lwIOInfo.textContent = lwIOPath.split('/').pop(); }
+        if (_saved.ioEnabled === false) lwChkIO.checked = false;
+    } catch(e) {}
+
+    function lwSave() {
+        try { localStorage.setItem(LW_KEY, JSON.stringify({
+            tblX: lwInps.tblX.value, tblY: lwInps.tblY.value, tblS: lwInps.tblS.value,
+            autX: lwInps.autX.value, autY: lwInps.autY.value, autS: lwInps.autS.value,
+            ioPath: lwIOPath, ioEnabled: lwChkIO.checked
+        })); } catch(e) {}
+    }
+    Object.keys(lwInps).forEach(function(k){ lwInps[k].addEventListener('change', lwSave); });
+    lwChkIO.addEventListener('change', lwSave);
+
+    // Intro-Outro file picker
+    lwBtnIO.addEventListener('click', function () {
+        var jsx = 'var _f=File.openDialog("Selecciona Intro-Outro","*.mp4,*.mov");_f?_f.fsName:"";';
+        window.__adobe_cep__.evalScript(jsx, function(res) {
+            if (res && res !== 'undefined' && res !== '') {
+                lwIOPath = res;
+                lwIOInfo.textContent = res.split('/').pop();
+                lwSave();
+            }
+        });
+    });
+
+    // Background (fondo) file picker — independent of Legacy Updater
+    var lwBgPath = '';
+    var lwBgInfo = document.getElementById('lwBgInfo');
+    try { var _savedLwBg = localStorage.getItem('lw_bg_path'); if (_savedLwBg) { lwBgPath = _savedLwBg; lwBgInfo.textContent = _savedLwBg.split('/').pop(); } } catch(e) {}
+    var lwBtnBg = document.getElementById('lwBtnBg');
+    if (lwBtnBg) {
+        lwBtnBg.addEventListener('click', function () {
+            var jsx = 'var _f=File.openDialog("Selecciona fondo","*.mp4,*.mov,*.png,*.jpg");_f?_f.fsName:"";';
+            window.__adobe_cep__.evalScript(jsx, function(res) {
+                if (res && res !== 'undefined' && res !== '') {
+                    lwBgPath = res;
+                    lwBgInfo.textContent = res.split('/').pop();
+                    try { localStorage.setItem('lw_bg_path', res); } catch(e) {}
+                }
+            });
+        });
+    }
+
+    function lwLog(msg) {
+        lwStatus.style.display = 'block';
+        lwStatus.innerHTML = msg;
+    }
+
+    // ── Capture motion from test sequence ──────────────────────────────────
+    lwCapture.addEventListener('click', function () {
+        lwCapture.disabled = true;
+        var jsx =
+            'var _r={ok:false,err:"",tbl:{x:0,y:0,s:100},aut:{x:0,y:0,s:100}};' +
+            'try{var _sq=app.project.activeSequence;if(!_sq)throw new Error("No active sequence");' +
+            // find the two tracks with video clips (skip bg = PNG/JPG)
+            'var _vTracks=[];' +
+            'for(var _ti=0;_ti<_sq.videoTracks.numTracks;_ti++){' +
+                'var _vt=_sq.videoTracks[_ti];if(_vt.clips.numItems===0)continue;' +
+                'var _cl=_vt.clips[0];if(!_cl.projectItem)continue;' +
+                'try{var _mp=_cl.projectItem.getMediaPath();if(/\\.png$|\\.jpg$/i.test(_mp))continue;}catch(_mpe){}' +
+                '_vTracks.push({idx:_ti,clip:_cl});' +
+            '}' +
+            'function _getMotion(clip){var _m={x:0,y:0,s:100};' +
+                'try{for(var _ci=0;_ci<clip.components.numItems;_ci++){' +
+                    'var _co=clip.components[_ci];if(_co.displayName!=="Motion")continue;' +
+                    'for(var _pi=0;_pi<_co.properties.numItems;_pi++){' +
+                        'var _pp=_co.properties[_pi];var _v=_pp.getValue();' +
+                        'if(_pp.displayName==="Position"){_m.x=_v[0];_m.y=_v[1];}' +
+                        'if(_pp.displayName==="Scale")_m.s=_v;' +
+                    '}' +
+                '}}catch(_e){}return _m;}' +
+            'if(_vTracks.length>=1)_r.tbl=_getMotion(_vTracks[0].clip);' +
+            'if(_vTracks.length>=2)_r.aut=_getMotion(_vTracks[1].clip);' +
+            '_r.ok=true;}catch(_e){_r.err=_e.message;}' +
+            'JSON.stringify(_r);';
+        window.__adobe_cep__.evalScript(jsx, function(res) {
+            lwCapture.disabled = false;
+            try {
+                var d = JSON.parse(res);
+                if (!d.ok) { lwLog('Capture error: ' + d.err); return; }
+                var _w = d.w || 1920, _h = d.h || 1080;
+                lwInps.tblX.value = Math.round(d.tbl.x * _w * 10) / 10;
+                lwInps.tblY.value = Math.round(d.tbl.y * _h * 10) / 10;
+                lwInps.tblS.value = Math.round(d.tbl.s * 10) / 10;
+                lwInps.autX.value = Math.round(d.aut.x * _w * 10) / 10;
+                lwInps.autY.value = Math.round(d.aut.y * _h * 10) / 10;
+                lwInps.autS.value = Math.round(d.aut.s * 10) / 10;
+                lwSave();
+                lwLog('Capturado: Tablero (' + lwInps.tblX.value + ', ' + lwInps.tblY.value + ') s=' + lwInps.tblS.value +
+                      ' | Autor (' + lwInps.autX.value + ', ' + lwInps.autY.value + ') s=' + lwInps.autS.value);
+            } catch(e) { lwLog('Parse error: ' + res); }
+        });
+    });
+
+    lwBtn.addEventListener('click', function () {
+        lwBtn.disabled = true;
+        lwLog('Leyendo secuencia test...');
+
+        // ── Phase 1: read test sequence ──────────────────────────────────
+        var jsx1 =
+            'var _r={ok:false,err:"",cutStartT:0,cutEndT:0,fps:0,w:0,h:0,testChapPath:"",tracks:[]};' +
+            'try{' +
+                'var _sq=app.project.activeSequence;' +
+                'if(!_sq)throw new Error("No hay secuencia activa");' +
+                '_r.seqName=_sq.name;' +
+                '_r.fps=_sq.timebase;' +
+                '_r.w=_sq.frameSizeHorizontal;' +
+                '_r.h=_sq.frameSizeVertical;' +
+
+                // ── helper: read all component params from a TrackItem ──
+                'function _readComps(clip){' +
+                    'var out=[];' +
+                    'try{for(var i=0;i<clip.components.numItems;i++){' +
+                        'var co=clip.components[i];' +
+                        'var coInfo={name:co.displayName,params:[]};' +
+                        'try{for(var j=0;j<co.properties.numItems;j++){' +
+                            'var pp=co.properties[j];' +
+                            'try{coInfo.params.push({name:pp.displayName,val:pp.getValue()});}catch(e){}' +
+                        '}}catch(e){}' +
+                        'out.push(coInfo);' +
+                    '}}catch(e){}' +
+                    'return out;}' +
+
+                // ── read video tracks ──
+                'for(var _vti=0;_vti<_sq.videoTracks.numTracks;_vti++){' +
+                    'var _vt=_sq.videoTracks[_vti];' +
+                    'if(_vt.clips.numItems===0)continue;' +
+                    'var _tinfo={idx:_vti,type:"video",isChapter:false,clips:[]};' +
+                    'for(var _vci=0;_vci<_vt.clips.numItems;_vci++){' +
+                        'var _vc=_vt.clips[_vci];' +
+                        'var _ci={startT:parseFloat(_vc.start.ticks)||0,endT:parseFloat(_vc.end.ticks)||0,' +
+                            'inPtT:parseFloat(_vc.inPoint.ticks)||0,name:_vc.projectItem?_vc.projectItem.name:"",' +
+                            'mediaPath:""};' +
+                        'try{_ci.mediaPath=_vc.projectItem.getMediaPath();}catch(e){}' +
+                        '_ci.clipDurT=parseFloat(_vc.end.ticks)-parseFloat(_vc.start.ticks);' +
+                        '_ci.comps=_readComps(_vc);' +
+                        '_tinfo.clips.push(_ci);' +
+                    '}' +
+                    '_r.tracks.push(_tinfo);' +
+                '}' +
+
+                // ── read audio tracks ──
+                'for(var _ati=0;_ati<_sq.audioTracks.numTracks;_ati++){' +
+                    'var _at=_sq.audioTracks[_ati];' +
+                    'if(_at.clips.numItems===0)continue;' +
+                    'var _atinfo={idx:_ati,type:"audio",isChapter:false,clips:[]};' +
+                    'for(var _aci=0;_aci<_at.clips.numItems;_aci++){' +
+                        'var _ac=_at.clips[_aci];' +
+                        'var _aMediaPath="";try{_aMediaPath=_ac.projectItem.getMediaPath();}catch(e){}' +
+                        '_atinfo.clips.push({startT:parseFloat(_ac.start.ticks)||0,endT:parseFloat(_ac.end.ticks)||0,mediaPath:_aMediaPath,comps:_readComps(_ac)});' +
+                    '}' +
+                    '_r.tracks.push(_atinfo);' +
+                '}' +
+
+                // ── find testChapPath: path of the chapter mp4 in the test ──
+                // It's the first mp4/mov file found on the first video track with mp4 clips
+                'var _testChapPath="";' +
+                'for(var _ti=0;_ti<_r.tracks.length&&!_testChapPath;_ti++){' +
+                    'var _t=_r.tracks[_ti];' +
+                    'if(_t.type!=="video")continue;' +
+                    'for(var _ci2=0;_ci2<_t.clips.length;_ci2++){' +
+                        'var _cp=_t.clips[_ci2].mediaPath;' +
+                        'if(_cp&&/\\.mp4$|\\.mov$/i.test(_cp)){_testChapPath=_cp;break;}' +
+                    '}' +
+                '}' +
+                '_r.testChapPath=_testChapPath;' +
+
+                // ── mark each track: isChapter = has clips whose path matches testChapPath ──
+                'for(var _ti2=0;_ti2<_r.tracks.length;_ti2++){' +
+                    'var _t2=_r.tracks[_ti2];' +
+                    'for(var _ci3=0;_ci3<_t2.clips.length;_ci3++){' +
+                        'if(_t2.clips[_ci3].mediaPath===_testChapPath){_t2.isChapter=true;break;}' +
+                    '}' +
+                '}' +
+
+                // ── compute cutStart/cutEnd from the FIRST chapter video track ──
+                // Collects all clips on chapter video tracks, ordered by sequence start time
+                'var _chapVClips=[];' +
+                'for(var _vti2=0;_vti2<_sq.videoTracks.numTracks;_vti2++){' +
+                    'var _vt2=_sq.videoTracks[_vti2];' +
+                    'for(var _vci2=0;_vci2<_vt2.clips.numItems;_vci2++){' +
+                        'var _vc2=_vt2.clips[_vci2];' +
+                        'if(!_vc2.projectItem)continue;' +
+                        'var _vmp="";try{_vmp=_vc2.projectItem.getMediaPath();}catch(e){}' +
+                        'if(_vmp!==_testChapPath)continue;' +
+                        '_chapVClips.push(_vc2);' +
+                        'break;' + // only first clip per track for ordering
+                    '}' +
+                '}' +
+                'if(_chapVClips.length===0)throw new Error("No hay clips del capítulo test");' +
+                // Sort by sequence start time to find intro (earliest) and outro (latest)
+                '_chapVClips.sort(function(a,b){return parseFloat(a.start.ticks)-parseFloat(b.start.ticks);});' +
+                // Use first video track with chapter clips to get per-track clip list (in time order)
+                'var _firstChapTrackClips=[];' +
+                'for(var _vti3=0;_vti3<_sq.videoTracks.numTracks;_vti3++){' +
+                    'var _vt3=_sq.videoTracks[_vti3];' +
+                    'var _fcClips=[];' +
+                    'for(var _vci3=0;_vci3<_vt3.clips.numItems;_vci3++){' +
+                        'var _vc3=_vt3.clips[_vci3];' +
+                        'if(!_vc3.projectItem)continue;' +
+                        'var _vmp3="";try{_vmp3=_vc3.projectItem.getMediaPath();}catch(e){}' +
+                        'if(_vmp3!==_testChapPath)continue;' +
+                        '_fcClips.push(_vc3);' +
+                    '}' +
+                    'if(_fcClips.length>0){_firstChapTrackClips=_fcClips;break;}' +
+                '}' +
+                '_firstChapTrackClips.sort(function(a,b){return parseFloat(a.start.ticks)-parseFloat(b.start.ticks);});' +
+
+                // cutStart = duration of the INTRO clip (first clip in time) = how many ticks to trim from start
+                // cutEnd = duration of the OUTRO clip (last clip in time) = how many ticks to trim from end
+                'var _fcFirst=_firstChapTrackClips[0];' +
+                'var _fcLast=_firstChapTrackClips[_firstChapTrackClips.length-1];' +
+                'if(_firstChapTrackClips.length>=3){' +
+                    // 3-clip structure: intro | main | outro
+                    '_r.cutStartT=parseFloat(_fcFirst.end.ticks)-parseFloat(_fcFirst.start.ticks);' +
+                    '_r.cutEndT=parseFloat(_fcLast.end.ticks)-parseFloat(_fcLast.start.ticks);' +
+                '}else{' +
+                    // Single or 2-clip: use clip source in/out points
+                    '_r.cutStartT=parseFloat(_fcFirst.inPoint.ticks)||0;' +
+                    'var _lastSrcDur=0;' +
+                    'try{_lastSrcDur=parseFloat(_fcLast.projectItem.getOutPoint().ticks)-parseFloat(_fcLast.projectItem.getInPoint().ticks);}catch(e){' +
+                        'try{_lastSrcDur=parseFloat(_fcLast.projectItem.duration.ticks);}catch(e2){}}' +
+                    'var _lastOutPt=parseFloat(_fcLast.inPoint.ticks)+(parseFloat(_fcLast.end.ticks)-parseFloat(_fcLast.start.ticks));' +
+                    '_r.cutEndT=Math.max(0,_lastSrcDur-_lastOutPt);' +
+                '}' +
+
+                '_r.ok=true;' +
+            '}catch(_e){_r.err=_e.message;}' +
+            'JSON.stringify(_r);';
+
+        window.__adobe_cep__.evalScript(jsx1, function (res1) {
+            var data;
+            try { data = JSON.parse(res1); } catch(e) { lwLog('Error JSON: ' + res1); lwBtn.disabled = false; return; }
+            if (!data.ok) { lwLog('Error: ' + data.err); lwBtn.disabled = false; return; }
+
+            var cutStartT = data.cutStartT;
+            var cutEndT   = data.cutEndT;
+            var cutStartS = (cutStartT / 254016000000).toFixed(2);
+            var cutEndS   = (cutEndT   / 254016000000).toFixed(2);
+            lwLog('Test leído: corte inicio=' + cutStartS + 's, fin=' + cutEndS + 's<br>Buscando capítulos...');
+
+            // ── Phase 2: find all chapter project items (video, no PREVIEW) ──
+            var jsx2 =
+                'var _items=[];' +
+                'function _scan(node){' +
+                    'if(!node||!node.children)return;' +
+                    'for(var _i=0;_i<node.children.numItems;_i++){' +
+                        'var _ch=node.children[_i];' +
+                        'if(_ch.type===ProjectItemType.CLIP){' +
+                            'try{var _mp=_ch.getMediaPath();' +
+                            'if(!_mp||!/\\.mp4$|\\.mov$/i.test(_mp))continue;' +
+                            'if(/preview/i.test(_ch.name))continue;' +
+                            '_items.push({name:_ch.name,path:_mp});}catch(_e){}' +
+                        '}else{_scan(_ch);}' +
+                    '}' +
+                '}' +
+                '_scan(app.project.rootItem);' +
+                'JSON.stringify(_items);';
+
+            window.__adobe_cep__.evalScript(jsx2, function (res2) {
+                var chapters;
+                try { chapters = JSON.parse(res2); } catch(e) { lwLog('Error capítulos: ' + res2); lwBtn.disabled = false; return; }
+                if (!chapters.length) { lwLog('No se encontraron capítulos (mp4/mov sin PREVIEW) en el proyecto.'); lwBtn.disabled = false; return; }
+
+                lwLog('Capítulos encontrados: ' + chapters.length + '<br>Procesando...');
+
+                // ── Phase 3: for each chapter create sequence ──────────────
+                var tracksJSON  = JSON.stringify(data.tracks);
+                var chapJSON    = JSON.stringify(chapters);
+
+                var tblX = parseFloat(lwInps.tblX.value) || 960;
+                var tblY = parseFloat(lwInps.tblY.value) || 540;
+                var tblS = parseFloat(lwInps.tblS.value) || 100;
+                var autX = parseFloat(lwInps.autX.value) || 960;
+                var autY = parseFloat(lwInps.autY.value) || 540;
+                var autS = parseFloat(lwInps.autS.value) || 100;
+                var doIO   = lwChkIO.checked && !!lwIOPath;
+                var ioPath = lwIOPath;
+
+                var _bgPathJS = (lwBgPath || '').replace(/\\/g, '/').replace(/"/g, '\\"');
+                var _ioPathJS = (doIO && ioPath) ? ioPath.replace(/\\/g, '/').replace(/"/g, '\\"') : '';
+
+                var jsx3 =
+                    'var _OUT=[];' +
+                    'try{' +
+
+                    'var _chaps=' + chapJSON + ';' +
+                    'var _tracks=' + tracksJSON + ';' +
+                    'var _cutST=' + cutStartT + ';' +
+                    'var _cutET=' + cutEndT + ';' +
+                    'var _bgPath="' + _bgPathJS + '";' +
+                    'var _ioPath="' + _ioPathJS + '";' +
+                    'var _testSeq=app.project.activeSequence;' +
+                    'if(!_testSeq)throw new Error("no active sequence");' +
+
+                    // ── helper: find ProjectItem by file path ──
+                    'function _findByPath(path,node){' +
+                        'if(!node)node=app.project.rootItem;' +
+                        'try{if(node.getMediaPath&&node.getMediaPath()===path)return node;}catch(e){}' +
+                        'try{for(var i=0;i<node.children.numItems;i++){var f=_findByPath(path,node.children[i]);if(f)return f;}}catch(e2){}' +
+                        'return null;}' +
+
+                    // ── helper: copy ALL component params from test data onto a clip ──
+                    // Iterates existing components on the new clip and sets params from test data
+                    'function _applyComps(newClip,compsData){' +
+                        'var log=[];' +
+                        'try{for(var ci=0;ci<newClip.components.numItems;ci++){' +
+                            'var co=newClip.components[ci];' +
+                            // Find matching component in test data
+                            'var srcCo=null;' +
+                            'for(var di=0;di<compsData.length;di++){if(compsData[di].name===co.displayName){srcCo=compsData[di];break;}}' +
+                            'if(!srcCo)continue;' +
+                            // Set each param
+                            'for(var pi=0;pi<co.properties.numItems;pi++){' +
+                                'var pp=co.properties[pi];' +
+                                'var srcP=null;' +
+                                'for(var dpi=0;dpi<srcCo.params.length;dpi++){if(srcCo.params[dpi].name===pp.displayName){srcP=srcCo.params[dpi];break;}}' +
+                                'if(!srcP)continue;' +
+                                'try{pp.setValue(srcP.val,true);}catch(e){}' +
+                            '}' +
+                            'log.push(co.displayName);' +
+                        '}}catch(e){log.push("err:"+e.message);}' +
+                        'return log.join(",");}' +
+
+                    'var _t0=new Time();_t0.ticks="0";' +
+
+                    'for(var _chi=0;_chi<_chaps.length;_chi++){' +
+                        'var _chap=_chaps[_chi];var _step="find";' +
+                        'try{' +
+
+                            // 1. Find chapter ProjectItem
+                            'var _chapItem=_findByPath(_chap.path);' +
+                            'if(!_chapItem){_OUT.push("SKIP-notfound:"+_chap.name);continue;}' +
+                            // Skip if a sequence with this name already exists
+                            'var _seqNameCheck=_chap.name.replace(/\\.mp4$|\\.mov$/i,"");' +
+                            'var _alreadyExists=false;' +
+                            'for(var _aei=0;_aei<app.project.sequences.numSequences;_aei++){try{var _aes=app.project.sequences[_aei];if(_aes&&_aes.name===_seqNameCheck){_alreadyExists=true;break;}}catch(e){}}' +
+                            'if(_alreadyExists){_OUT.push("SKIP-exists:"+_seqNameCheck);continue;}' +
+
+                            // 2. Try to reset corrupted in/out, then read TRUE srcDur
+                            '_step="srcDur";' +
+                            // Attempt to clear any previously-set in/out (PP 27 may or may not have these methods)
+                            'try{_chapItem.clearInPoint(1);}catch(e){}' +
+                            'try{_chapItem.clearOutPoint(1);}catch(e){}' +
+                            'var _srcDur=0;' +
+                            'try{_srcDur=parseFloat(_chapItem.getOutPoint().ticks)-parseFloat(_chapItem.getInPoint().ticks);}catch(e){}' +
+                            'var _4H=254016000000*14400;' + // 4 hours sanity ceiling
+                            'if(_srcDur<=0||_srcDur>_4H){' +
+                                '_OUT.push("SKIP-corrupt:"+_chap.name+" — Clear in/out: Project panel → right-click → Modify → Interpret Footage or press D/G in Source Monitor");' +
+                                'continue;' +
+                            '}' +
+                            'var _chapOutT=_srcDur-_cutET;' +
+                            'if((_chapOutT-_cutST)<=0){_OUT.push("SKIP-tooshort:"+_chap.name);continue;}' +
+
+                            // 3. Reset in-point ONLY to 0 so overwriteClip places at seq 0
+                            // DO NOT touch outPoint — already confirmed valid above
+                            '_step="resetPI";' +
+                            'var _piZero=new Time();_piZero.ticks="0";' +
+                            'try{_chapItem.setInPoint(_piZero,1);}catch(e){}' +
+
+                            // 4. Clone test sequence and locate the new sequence by ID
+                            '_step="clone";' +
+                            'var _existIds={};' +
+                            'for(var _ei=0;_ei<app.project.sequences.numSequences;_ei++){' +
+                                'try{var _es=app.project.sequences[_ei];if(_es&&_es.sequenceID)_existIds[_es.sequenceID]=1;}catch(e){}}' +
+                            'for(var _ei2=1;_ei2<=app.project.sequences.numSequences;_ei2++){' +
+                                'try{var _es2=app.project.sequences[_ei2];if(_es2&&_es2.sequenceID)_existIds[_es2.sequenceID]=1;}catch(e){}}' +
+                            '_testSeq.clone();$.sleep(500);' +
+                            'var _newSeq=null;' +
+                            'for(var _fi=app.project.sequences.numSequences-1;_fi>=0;_fi--){' +
+                                'try{var _fs=app.project.sequences[_fi];' +
+                                'if(_fs&&_fs.sequenceID&&!_existIds[_fs.sequenceID]){_newSeq=_fs;break;}}catch(e){}}' +
+                            'if(!_newSeq)for(var _fi2=app.project.sequences.numSequences;_fi2>=1;_fi2--){' +
+                                'try{var _fs2=app.project.sequences[_fi2];' +
+                                'if(_fs2&&_fs2.sequenceID&&!_existIds[_fs2.sequenceID]){_newSeq=_fs2;break;}}catch(e){}}' +
+                            'if(!_newSeq)throw new Error("clone not found");' +
+
+                            // 5. Rename
+                            '_step="rename";' +
+                            'var _seqName=_chap.name.replace(/\\.mp4$|\\.mov$/i,"");' +
+                            'try{_newSeq.name=_seqName;}catch(e){}' +
+                            'try{_newSeq.projectItem.name=_seqName;}catch(e){}' +
+                            '_OUT.push("seq:"+_seqName);' +
+
+                            // 6. For each CHAPTER track: clear clips, place chapter, copy all comps
+                            '_step="replace";' +
+                            'var _placed=0;' +
+                            'for(var _ti=0;_ti<_tracks.length;_ti++){' +
+                                'var _td=_tracks[_ti];' +
+                                'if(!_td.isChapter)continue;' + // skip background / Intro-Outro tracks
+                                'var _tk=null;' +
+                                'try{_tk=(_td.type==="video")?_newSeq.videoTracks[_td.idx]:_newSeq.audioTracks[_td.idx];}catch(e){}' +
+                                'if(!_tk){_OUT.push("notrk:"+_td.type+_td.idx);continue;}' +
+
+                                // Clear all existing clips (last→first, handle 0- and 1-indexed)
+                                'var _nc=_tk.clips.numItems;' +
+                                'for(var _ri=_nc-1;_ri>=0;_ri--){try{_tk.clips[_ri].remove(false,false);}catch(e){}}' +
+                                'for(var _ri2=_tk.clips.numItems;_ri2>=1;_ri2--){try{_tk.clips[_ri2].remove(false,false);}catch(e){}}' +
+
+                                // Place chapter clip at sequence time 0
+                                'try{_tk.overwriteClip(_chapItem,_t0);}catch(owe){_OUT.push("ow-err:"+_td.type+_td.idx+":"+owe.message);continue;}' +
+                                '_placed++;' +
+
+                                // Trim placed clip: set source in-point (start cut) + source out-point / seq end (end cut)
+                                'var _pc=_tk.clips[0];if(!_pc)_pc=_tk.clips[1];' +
+                                'if(_pc){' +
+                                    // Trim start: advance source in-point
+                                    'var _pcIn=new Time();_pcIn.ticks=String(_cutST);' +
+                                    'try{_pc.inPoint=_pcIn;}catch(e){}' +
+                                    // Trim end A: set source out-point
+                                    'var _pcOut=new Time();_pcOut.ticks=String(_chapOutT);' +
+                                    'var _eA="?";try{_pc.outPoint=_pcOut;_eA="ok";}catch(eA){_eA="fail:"+eA.message;}' +
+                                    // Trim end B: set sequence end position
+                                    'var _desiredDur=_srcDur-_cutST-_cutET;' +
+                                    'var _pcEnd=new Time();_pcEnd.ticks=String(_desiredDur);' +
+                                    'var _eB="?";try{_pc.end=_pcEnd;_eB="ok";}catch(eB){_eB="fail:"+eB.message;}' +
+                                    '_OUT.push("trim:in="+(parseFloat(_cutST)/254016000000).toFixed(2)+"s|outA="+_eA+"|endB="+_eB+"|dur="+(parseFloat(_desiredDur)/254016000000).toFixed(2)+"s");' +
+                                '}' +
+
+                                // Copy ALL component params from test data (Motion, Crop, Opacity, plugins, etc.)
+                                'if(_td.clips.length>0){' +
+                                    'var _clip=_tk.clips[0];if(!_clip)_clip=_tk.clips[1];' +
+                                    'if(_clip&&_td.clips[0].comps&&_td.clips[0].comps.length>0){' +
+                                        'var _compsSet=_applyComps(_clip,_td.clips[0].comps);' +
+                                        '_OUT.push(_td.type[0].toUpperCase()+_td.idx+":comps=["+_compsSet+"]");' +
+                                    '}' +
+                                '}' +
+                            '}' +
+
+                            // 7. Unlink all clips so tracks can be edited independently
+                            '_step="unlink";' +
+                            'try{' +
+                                'for(var _ulvi=0;_ulvi<_newSeq.videoTracks.numTracks;_ulvi++){' +
+                                    'var _ulvt=_newSeq.videoTracks[_ulvi];' +
+                                    'for(var _ulvc=0;_ulvc<_ulvt.clips.numItems;_ulvc++){' +
+                                        'try{_ulvt.clips[_ulvc].unlinkAll();}catch(e){' +
+                                        'try{_ulvt.clips[_ulvc].linked=false;}catch(e2){}}' +
+                                    '}' +
+                                '}' +
+                                'for(var _ulai=0;_ulai<_newSeq.audioTracks.numTracks;_ulai++){' +
+                                    'var _ulat=_newSeq.audioTracks[_ulai];' +
+                                    'for(var _ulac=0;_ulac<_ulat.clips.numItems;_ulac++){' +
+                                        'try{_ulat.clips[_ulac].unlinkAll();}catch(e){' +
+                                        'try{_ulat.clips[_ulac].linked=false;}catch(e2){}}' +
+                                    '}' +
+                                '}' +
+                            '}catch(e){_OUT.push("unlink-err:"+e.message);}' +
+
+                            // 8. Clear V1 (videoTracks[0]) — will receive the background
+                            '_step="clearV1";' +
+                            'try{' +
+                                'var _v1trk=_newSeq.videoTracks[0];' +
+                                'var _v1n=_v1trk.clips.numItems;' +
+                                'for(var _v1ri=_v1n-1;_v1ri>=0;_v1ri--){try{_v1trk.clips[_v1ri].remove(false,false);}catch(e){}}' +
+                                'for(var _v1ri2=_v1trk.clips.numItems;_v1ri2>=1;_v1ri2--){try{_v1trk.clips[_v1ri2].remove(false,false);}catch(e){}}' +
+                            '}catch(e){_OUT.push("clearV1-err:"+e.message);}' +
+
+                            // 9. Place Intro-Outro at chapter end (before clearing A2/A3 so auto-route goes there and is then cleaned)
+                            '_step="placeIO";' +
+                            'if(_ioPath){' +
+                                'try{' +
+                                    'var _ioItem=_findByPath(_ioPath);' +
+                                    'if(!_ioItem){' +
+                                        'try{app.project.importFiles([_ioPath],true,app.project.rootItem,false);}catch(e){}' +
+                                        '_ioItem=_findByPath(_ioPath);' +
+                                    '}' +
+                                    'if(_ioItem){' +
+                                        'var _ioSeqT=new Time();_ioSeqT.ticks=String(Math.round(_srcDur-_cutST-_cutET));' +
+                                        'for(var _ioti=0;_ioti<_tracks.length;_ioti++){' +
+                                            'var _iotd=_tracks[_ioti];' +
+                                            'if(!_iotd.isChapter)continue;' +
+                                            'var _iotrk=null;' +
+                                            'try{_iotrk=(_iotd.type==="video")?_newSeq.videoTracks[_iotd.idx]:_newSeq.audioTracks[_iotd.idx];}catch(e){}' +
+                                            'if(_iotrk){try{_iotrk.overwriteClip(_ioItem,_ioSeqT);}catch(e){}}' +
+                                        '}' +
+                                        '_OUT.push("IO:OK");' +
+                                    '}else{_OUT.push("IO:item-not-found");}' +
+                                '}catch(e){_OUT.push("IO-ERR:"+e.message);}' +
+                            '}' +
+
+                            // 10. Clear A2 (audioTracks[1]) and A3 (audioTracks[2])
+                            //     Removes auto-routed audio from chapter MP4 and IO clip placements on video tracks
+                            '_step="clearA23";' +
+                            'for(var _a23i=1;_a23i<=2;_a23i++){' +
+                                'try{' +
+                                    'var _a23trk=_newSeq.audioTracks[_a23i];' +
+                                    'var _a23n=_a23trk.clips.numItems;' +
+                                    'for(var _a23ri=_a23n-1;_a23ri>=0;_a23ri--){try{_a23trk.clips[_a23ri].remove(false,false);}catch(e){}}' +
+                                    'for(var _a23ri2=_a23trk.clips.numItems;_a23ri2>=1;_a23ri2--){try{_a23trk.clips[_a23ri2].remove(false,false);}catch(e){}}' +
+                                '}catch(e){_OUT.push("clearA"+(_a23i+1)+"-err:"+e.message);}' +
+                            '}' +
+
+                            // 11. Place background on V1
+                            '_step="placeBg";' +
+                            'if(_bgPath){' +
+                                'try{' +
+                                    'var _bgItem=_findByPath(_bgPath);' +
+                                    'if(!_bgItem){' +
+                                        'try{app.project.importFiles([_bgPath],true,app.project.rootItem,false);}catch(e){}' +
+                                        '_bgItem=_findByPath(_bgPath);' +
+                                    '}' +
+                                    'if(_bgItem){' +
+                                        'var _seqEndT=parseFloat(_newSeq.end.ticks);' +
+                                        'var _bgDurT=new Time();_bgDurT.ticks=String(_seqEndT);' +
+                                        // type=1 (clip time) — type=0 resets still images to 1 frame
+                                        'try{_bgItem.setOutPoint(_bgDurT,1);}catch(e){_OUT.push("bg-setOP-err:"+e.message);}' +
+                                        '_newSeq.videoTracks[0].overwriteClip(_bgItem,_t0);' +
+                                        'try{var _bgC=_newSeq.videoTracks[0].clips[0];if(!_bgC)_bgC=_newSeq.videoTracks[0].clips[1];' +
+                                            'if(_bgC){_OUT.push("bg-dur:"+Math.round(parseFloat(_bgC.end.ticks)/254016000000)+"s/target:"+Math.round(_seqEndT/254016000000)+"s");}}catch(e){}' +
+                                        '_OUT.push("bg:OK");' +
+                                    '}else{_OUT.push("bg:item-not-found");}' +
+                                '}catch(e){_OUT.push("bgERR:"+e.message);}' +
+                            '}else{_OUT.push("bg:no-path");}' +
+
+                            // Mute all audio tracks except the first (index 0)
+                            'for(var _muteI=1;_muteI<_newSeq.audioTracks.numTracks;_muteI++){' +
+                                'try{_newSeq.audioTracks[_muteI].setMute(1);}catch(e){}' +
+                            '}' +
+
+                            '_OUT.push("OK:"+_seqName+"/placed="+_placed);' +
+
+                        '}catch(_err){_OUT.push("ERR["+_step+"]:"+_chap.name+":"+_err.message);}' +
+                    '}' +
+
+                    '}catch(_top){_OUT.push("FATAL:"+_top.message);}' +
+                    '_OUT.join("|");';
+
+                window.__adobe_cep__.evalScript(jsx3, function (res3) {
+                    lwBtn.disabled = false;
+                    var lines = (res3 || '').split('|');
+                    var ok  = lines.filter(function(l){ return l.indexOf('OK') === 0; }).length;
+                    var err = lines.filter(function(l){ return l.indexOf('SKIP') === 0 || l.indexOf('ERR') === 0; }).length;
+                    try {
+                        var _logPath = cep.fs.getHomePath() + '/Desktop/lw_log.txt';
+                        cep.fs.writeFile(_logPath, lines.join('\n'), cep.encoding.UTF8);
+                    } catch(logE) {
+                        try { cep.fs.writeFile('/Users/raulmartinez/Desktop/lw_log.txt', lines.join('\n'), cep.encoding.UTF8); } catch(e2) {}
+                    }
+                    lwLog('Listo: ' + ok + ' secuencias creadas, ' + err + ' omitidas.<br><small>' + lines.join('<br>') + '</small>');
+                });
+            });
+        });
+    });
+
+    // ── Preview export list ──────────────────────────────────────────────────
+    var lwBtnPreview = document.getElementById('lwBtnPreview');
+    if (lwBtnPreview) {
+        lwBtnPreview.addEventListener('click', function () {
+            lwBtnPreview.disabled = true;
+            var jsx =
+                'var _r=[];' +
+                'try{' +
+                    'var ss=app.project.sequences;' +
+                    'var _seen={};var _found=[];var _skipped=[];' +
+                    'function _skip(n){var nl=n.toLowerCase();return n==="test"||nl.indexOf("test")===0||nl.indexOf("nested sequence")===0;}' +
+                    '_r.push("total-seqs:"+ss.numSequences);' +
+                    'for(var i=0;i<ss.numSequences;i++){' +
+                        'try{var s=ss[i];if(!s||!s.name||!s.sequenceID){_skipped.push("["+i+"] null/no-id");continue;}' +
+                        'if(_skip(s.name)){_skipped.push("["+i+"] SKIP:"+s.name);continue;}' +
+                        'if(_seen[s.sequenceID]){_skipped.push("["+i+"] DUP:"+s.name);continue;}' +
+                        '_seen[s.sequenceID]=1;_found.push(s.name);}catch(e){_skipped.push("["+i+"] ERR:"+e.message);}' +
+                    '}' +
+                    '_found.sort(function(a,b){var na=parseInt(a)||0,nb=parseInt(b)||0;return na!==nb?na-nb:a.localeCompare(b);});' +
+                    '_r.push("Secuencias a exportar ("+_found.length+"):");' +
+                    'for(var k=0;k<_found.length;k++){_r.push((k+1)+". "+_found[k]);}' +
+                    'if(_skipped.length){_r.push("---OMITIDAS("+_skipped.length+"):");for(var sk=0;sk<_skipped.length;sk++){_r.push(_skipped[sk]);}}' +
+                '}catch(e){_r.push("ERROR: "+e.message);}' +
+                '_r.join("|")';
+            window.__adobe_cep__.evalScript(jsx, function (res) {
+                lwBtnPreview.disabled = false;
+                lwLog((res || 'sin respuesta').replace(/\|/g, '<br>'));
+            });
+        });
+    }
+
+    // ── Export dir picker for LW section ─────────────────────────────────────
+    var lwExportDir = '';
+    var lwDirInfo = document.getElementById('lwDirInfo');
+    try { var _lsLwDir = localStorage.getItem('lw_export_dir'); if (_lsLwDir) { lwExportDir = _lsLwDir; if (lwDirInfo) lwDirInfo.textContent = _lsLwDir.split('/').pop() || _lsLwDir; } } catch(e) {}
+    var _lwHomeDir = (function(){ try { return require('os').homedir(); } catch(e){ return '/Users/raulmartinez'; } })();
+    var lwBtnDir = document.getElementById('lwBtnDir');
+    if (lwBtnDir) {
+        lwBtnDir.addEventListener('click', function () {
+            try {
+                var _dlg = cep.fs.showOpenDialog(false, true, 'Carpeta de destino para los MP4', lwExportDir || (_lwHomeDir + '/Desktop'), null);
+                if (_dlg && _dlg.err === 0 && _dlg.data && _dlg.data[0]) {
+                    var _raw = _dlg.data[0];
+                    // CEP returns file:// URI — convert to plain path
+                    if (_raw.indexOf('file://') === 0) { _raw = _raw.slice('file://'.length); }
+                    _raw = decodeURIComponent(_raw).replace(/\/+$/, ''); // decode + strip trailing slashes
+                    lwExportDir = _raw;
+                    if (lwDirInfo) lwDirInfo.textContent = lwExportDir.split('/').pop() || lwExportDir;
+                    try { localStorage.setItem('lw_export_dir', lwExportDir); } catch(e) {}
+                }
+            } catch (_de) { lwLog('Error abriendo selector de carpeta: ' + _de.message); }
+        });
+    }
+
+    // ── Send to AME ──────────────────────────────────────────────────────────
+    var lwBtnAME = document.getElementById('lwBtnAME');
+    var LW_PRESET = '/Users/raulmartinez/Desktop/chess.com/Chessable Vimeo Export.epr';
+    if (lwBtnAME) {
+        lwBtnAME.addEventListener('click', function () {
+            if (!lwExportDir) { lwLog('AME: primero selecciona la carpeta de destino (botón Carpeta...).'); return; }
+            var exportDir = lwExportDir;
+            lwBtnAME.disabled = true;
+            lwLog('AME: enviando a Media Encoder...');
+            var dirEsc = exportDir.replace(/\\/g, '/').replace(/"/g, '\\"');
+            var preEsc = LW_PRESET.replace(/"/g, '\\"');
+            var jsx =
+                'var _r=[];' +
+                'try{' +
+                    // Diagnostic: PP version and encoder availability
+                    '_r.push("PP:"+app.version);' +
+                    '_r.push("enc-type:"+(typeof app.encoder));' +
+                    'try{_r.push("enc-bind:"+(typeof app.encoder.bind));}catch(ed){_r.push("enc-bind-err:"+ed.message);}' +
+                    'try{_r.push("enc-encSeq:"+(typeof app.encoder.encodeSequence));}catch(ed2){_r.push("enc-encSeq-err:"+ed2.message);}' +
+                    'var p="' + preEsc + '";' +
+                    'var d="' + dirEsc + '";' +
+                    'var _pf=new File(p);' +
+                    '_r.push("preset-exists:"+_pf.exists);' +
+                    'if(!_pf.exists){_r.push("FATAL:preset no encontrado");}else{' +
+                    'try{app.encoder.bind();}catch(_b){_r.push("bind-err:"+_b.message);}' +
+                    'var ss=app.project.sequences;' +
+                    'var _seen={};var _all=[];' +
+                    'for(var i=0;i<ss.numSequences;i++){try{var s=ss[i];if(s&&s.sequenceID&&!_seen[s.sequenceID]){_seen[s.sequenceID]=1;_all.push(s);}}catch(e){}}' +
+                    'for(var i2=1;i2<=ss.numSequences;i2++){try{var s2=ss[i2];if(s2&&s2.sequenceID&&!_seen[s2.sequenceID]){_seen[s2.sequenceID]=1;_all.push(s2);}}catch(e){}}' +
+                    '_r.push("seqs-found:"+_all.length);' +
+                    'for(var k=0;k<_all.length;k++){' +
+                        'var sq=_all[k];var sn=sq.name||"";' +
+                        'if(!sn||sn==="test"||sn.toLowerCase().indexOf("test")===0)continue;' +
+                        'if(sn.toLowerCase().indexOf("nested sequence")===0)continue;' +
+                        'var out=d+"/"+sn+".mp4";' +
+                        'var _ok=false;' +
+                        'try{app.encoder.encodeSequence(sq,out,p,0,0);_ok=true;}catch(_e1){' +
+                            '_r.push("enc-err:"+sn+":"+_e1.message);' +
+                        '}' +
+                        'if(_ok)_r.push("q:"+sn);' +
+                    '}' +
+                    '}' +
+                '}catch(e){_r.push("FATAL:"+e.message);}' +
+                '_r.join("|")';
+            window.__adobe_cep__.evalScript(jsx, function (res) {
+                lwBtnAME.disabled = false;
+                var lines = (res || 'sin-respuesta').split('|');
+                var queued = lines.filter(function(l){ return l.indexOf('q:') === 0; }).length;
+                lwLog('AME resultado (' + queued + ' en cola):<br><small>' + lines.join('<br>') + '</small>');
+            });
+        });
+    }
+})();
+
+/* ── PP26 AI Diagnostic ─────────────────────────────────────────────────── */
+(function () {
+    var btn = document.getElementById('btnPP26Diag');
+    var out = document.getElementById('pp26DiagOut');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+        btn.disabled = true;
+        btn.textContent = 'Running...';
+        out.style.display = 'none';
+        var jsx =
+            'var _r=[];' +
+            '_r.push("PP version: "+app.version);' +
+            'var _seq=app.project.activeSequence;' +
+            'if(!_seq){_r.push("ERROR: no active sequence");}else{' +
+                'var _cl=null;' +
+                'for(var _ti=0;_ti<_seq.videoTracks.numTracks&&!_cl;_ti++){' +
+                    'var _tr=_seq.videoTracks[_ti];' +
+                    'for(var _ci=0;_ci<_tr.clips.numItems&&!_cl;_ci++){' +
+                        'var _cand=_tr.clips[_ci];' +
+                        'if(_cand.projectItem){try{var _mp=_cand.projectItem.getMediaPath();if(_mp&&/\\.mp4$|\\.mov$|\\.avi$|\\.mxf$/i.test(_mp))_cl=_cand;}catch(_mpe){}}' +
+                    '}' +
+                '}' +
+                'if(!_cl){for(var _ti2=0;_ti2<_seq.videoTracks.numTracks&&!_cl;_ti2++){var _tr2=_seq.videoTracks[_ti2];for(var _ci2b=0;_ci2b<_tr2.clips.numItems&&!_cl;_ci2b++){if(_tr2.clips[_ci2b].projectItem)_cl=_tr2.clips[_ci2b];}}}' +
+                'if(_cl){' +
+                    '_r.push("Clip: "+_cl.projectItem.name);' +
+                    'var _aiM=["removeBackground","aiBackground","backgroundRemoval","trackSubject","trackMask","aiMask","aiTracking","objectTracking","subjectSelect","maskWithAI","applyAIEffect"];' +
+                    'for(var _i=0;_i<_aiM.length;_i++){try{_r.push("clip."+_aiM[_i]+"="+typeof _cl[_aiM[_i]]);}catch(_e){}}' +
+                    'try{' +
+                        '_r.push("\\n-- Components ("+_cl.components.numItems+"):");' +
+                        'for(var _ci2=0;_ci2<_cl.components.numItems;_ci2++){' +
+                            'var _c=_cl.components[_ci2];_r.push("  "+_c.displayName);' +
+                            'try{for(var _pi=0;_pi<_c.properties.numItems;_pi++){' +
+                                'var _p=_c.properties[_pi];' +
+                                'if(/ai|mask|track|background|subject|remove/i.test(_p.displayName))_r.push("    param: "+_p.displayName);' +
+                            '}}catch(_pe){}' +
+                        '}' +
+                    '}catch(_ce){_r.push("components err: "+_ce.message);}' +
+                '}else{_r.push("No clip found in sequence");}' +
+                'try{' +
+                    'var _qe=qeApp;var _qeM=["removeBackground","aiTracking","trackSubject","maskWithAI","subjectSelect","backgroundRemoval","objectTracking"];' +
+                    '_r.push("\\n-- qeApp:");' +
+                    'for(var _qi=0;_qi<_qeM.length;_qi++){try{_r.push("  qeApp."+_qeM[_qi]+"="+typeof _qe[_qeM[_qi]]);}catch(_qe2){}}' +
+                    'var _qseq=qeApp.getActiveSequence();' +
+                    'var _qcl=_qseq.getVideoTrackAt(0).getItemAt(0);' +
+                    '_r.push("\\n-- qeClip:");' +
+                    'var _qcM=["removeBackground","aiBackground","trackSubject","addEffect","getEffects","applyPreset","maskWithAI","removeBackgroundAI"];' +
+                    'for(var _qci=0;_qci<_qcM.length;_qci++){try{_r.push("  qeClip."+_qcM[_qci]+"="+typeof _qcl[_qcM[_qci]]);}catch(_qce){}}' +
+                '}catch(_qerr){_r.push("qeApp err: "+_qerr.message);}' +
+                'try{var _f=new File(Folder.desktop+"/pp26_ai_diag.txt");_f.open("w");_f.write(_r.join("\\n"));_f.close();_r.push("\\nGuardado en Escritorio: pp26_ai_diag.txt");}catch(_fe){}' +
+            '}' +
+            '_r.join("\\n");';
+        window.__adobe_cep__.evalScript(jsx, function (res) {
+            btn.disabled = false;
+            btn.textContent = '🔍 Run diagnostic';
+            out.textContent = res || '(sin resultado)';
+            out.style.display = 'block';
+        });
+    });
+})();
 
 })(); // end panel IIFE
