@@ -147,6 +147,7 @@ document.getElementById('app').innerHTML = [
     '  </div>',
     '  <div class="lu-info" id="lwInfo" style="margin-bottom:4px">Abre la secuencia <b>test</b> activa y pulsa Apply.</div>',
     '  <button class="btn-lu-run" id="lwBtnRun" style="width:100%">&#9654;&#9654; Apply to all chapters</button>',
+    '  <button class="btn-small" id="lwBtnPluginDx" style="width:100%;margin-top:6px">&#127900; Apply Plugin dx</button>',
     '  <div style="display:flex;align-items:center;gap:6px;margin-top:6px;margin-bottom:4px">',
     '    <button class="btn-small" id="lwBtnDir" style="flex-shrink:0">Carpeta...</button>',
     '    <div class="lu-info" id="lwDirInfo" style="margin:0;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">&mdash;</div>',
@@ -2608,6 +2609,101 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
             });
         });
     });
+
+    // ── Apply Plugin dx ──────────────────────────────────────────────────────
+    var lwBtnPluginDx = document.getElementById('lwBtnPluginDx');
+    if (lwBtnPluginDx) {
+        lwBtnPluginDx.addEventListener('click', function () {
+            lwBtnPluginDx.disabled = true;
+            lwLog('Leyendo plugins de audio del test...');
+
+            // Phase 1: capture audio comps from active test sequence
+            var jsx1 =
+                'var _r={ok:false,err:"",audioTracks:[]};' +
+                'try{' +
+                    'var _sq=app.project.activeSequence;' +
+                    'if(!_sq)throw new Error("No hay secuencia activa");' +
+                    'function _readComps(clip){' +
+                        'var out=[];' +
+                        'try{for(var i=0;i<clip.components.numItems;i++){' +
+                            'var co=clip.components[i];' +
+                            'var coInfo={name:co.displayName,params:[]};' +
+                            'try{for(var j=0;j<co.properties.numItems;j++){' +
+                                'var pp=co.properties[j];' +
+                                'try{coInfo.params.push({name:pp.displayName,val:pp.getValue()});}catch(e){}' +
+                            '}}catch(e){}' +
+                            'out.push(coInfo);' +
+                        '}}catch(e){}' +
+                        'return out;}' +
+                    'for(var _ati=0;_ati<_sq.audioTracks.numTracks;_ati++){' +
+                        'var _at=_sq.audioTracks[_ati];' +
+                        'if(_at.clips.numItems===0)continue;' +
+                        'var _ac=_at.clips[0];if(!_ac)_ac=_at.clips[1];' +
+                        'if(!_ac)continue;' +
+                        '_r.audioTracks.push({idx:_ati,comps:_readComps(_ac)});' +
+                    '}' +
+                    '_r.ok=true;' +
+                '}catch(e){_r.err=e.message;}' +
+                'JSON.stringify(_r);';
+
+            window.__adobe_cep__.evalScript(jsx1, function (res1) {
+                var data;
+                try { data = JSON.parse(res1); } catch(e) { lwLog('Error JSON: ' + res1); lwBtnPluginDx.disabled = false; return; }
+                if (!data.ok) { lwLog('Error capturando plugins: ' + data.err); lwBtnPluginDx.disabled = false; return; }
+                if (!data.audioTracks.length) { lwLog('No se encontraron pistas de audio en la secuencia test.'); lwBtnPluginDx.disabled = false; return; }
+                lwLog('Audio tracks capturados: ' + data.audioTracks.length + '. Aplicando a capítulos...');
+
+                // Phase 2: apply to all chapter sequences
+                var jsx2 =
+                    'var _OUT=[];' +
+                    'var _audioTracks=' + JSON.stringify(data.audioTracks) + ';' +
+                    'function _applyComps(newClip,compsData){' +
+                        'var log=[];' +
+                        'try{for(var ci=0;ci<newClip.components.numItems;ci++){' +
+                            'var co=newClip.components[ci];' +
+                            'var srcCo=null;' +
+                            'for(var di=0;di<compsData.length;di++){if(compsData[di].name===co.displayName){srcCo=compsData[di];break;}}' +
+                            'if(!srcCo)continue;' +
+                            'for(var pi=0;pi<co.properties.numItems;pi++){' +
+                                'var pp=co.properties[pi];' +
+                                'var srcP=null;' +
+                                'for(var dpi=0;dpi<srcCo.params.length;dpi++){if(srcCo.params[dpi].name===pp.displayName){srcP=srcCo.params[dpi];break;}}' +
+                                'if(!srcP)continue;' +
+                                'try{pp.setValue(srcP.val,true);}catch(e){}' +
+                            '}' +
+                            'log.push(co.displayName);' +
+                        '}}catch(e){log.push("err:"+e.message);}' +
+                        'return log.join(",");}' +
+                    'function _skip(n){var nl=n.toLowerCase();return nl==="test"||nl.indexOf("test")===0||nl.indexOf("nested sequence")===0||n.indexOf("PREVIEW")>=0;}' +
+                    'for(var _si=0;_si<app.project.sequences.numSequences;_si++){' +
+                        'try{' +
+                            'var _seq=app.project.sequences[_si];' +
+                            'if(!_seq||_skip(_seq.name))continue;' +
+                            'var _applied=[];' +
+                            'for(var _ti=0;_ti<_audioTracks.length;_ti++){' +
+                                'var _td=_audioTracks[_ti];' +
+                                'if(!_td.comps||_td.comps.length===0)continue;' +
+                                'var _tk=null;' +
+                                'try{_tk=_seq.audioTracks[_td.idx];}catch(e){}' +
+                                'if(!_tk||_tk.clips.numItems===0)continue;' +
+                                'var _ac=_tk.clips[0];if(!_ac)_ac=_tk.clips[1];' +
+                                'if(!_ac)continue;' +
+                                'var _res=_applyComps(_ac,_td.comps);' +
+                                '_applied.push("A"+_td.idx+":["+_res+"]");' +
+                            '}' +
+                            'if(_applied.length)_OUT.push(_seq.name+": "+_applied.join(" "));' +
+                        '}catch(e){_OUT.push("err-seq:"+e.message);}' +
+                    '}' +
+                    '_OUT.join("|");';
+
+                window.__adobe_cep__.evalScript(jsx2, function (res2) {
+                    lwBtnPluginDx.disabled = false;
+                    var lines = (res2 || '').split('|').filter(function(l){ return l.trim(); });
+                    lwLog('Plugin dx aplicado a ' + lines.length + ' secuencias.<br><small>' + lines.join('<br>') + '</small>');
+                });
+            });
+        });
+    }
 
     // ── Preview export list ──────────────────────────────────────────────────
     var lwBtnPreview = document.getElementById('lwBtnPreview');
