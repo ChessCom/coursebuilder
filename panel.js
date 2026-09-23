@@ -124,12 +124,12 @@ document.getElementById('app').innerHTML = [
     '<div class="section">',
     '  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">',
     '    <div>',
-    '      <div class="lu-info" style="margin-bottom:3px"><b>Tablero</b></div>',
+    '      <div class="lu-info" style="margin-bottom:3px"><b>Board</b></div>',
     '      <div style="display:flex;gap:4px;margin-bottom:3px"><input class="lw-inp" id="lwTblX" placeholder="X" style="width:100%"><input class="lw-inp" id="lwTblY" placeholder="Y" style="width:100%"></div>',
     '      <input class="lw-inp" id="lwTblScale" placeholder="Scale" style="width:100%">',
     '    </div>',
     '    <div>',
-    '      <div class="lu-info" style="margin-bottom:3px"><b>Autor</b></div>',
+    '      <div class="lu-info" style="margin-bottom:3px"><b>Author</b></div>',
     '      <div style="display:flex;gap:4px;margin-bottom:3px"><input class="lw-inp" id="lwAutX" placeholder="X" style="width:100%"><input class="lw-inp" id="lwAutY" placeholder="Y" style="width:100%"></div>',
     '      <input class="lw-inp" id="lwAutScale" placeholder="Scale" style="width:100%">',
     '    </div>',
@@ -142,14 +142,14 @@ document.getElementById('app').innerHTML = [
     '  </div>',
     '  <div class="lu-info" id="lwIOInfo" style="margin-bottom:6px;font-style:italic">&mdash;</div>',
     '  <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">',
-    '    <button class="btn-small" id="lwBtnBg" style="flex-shrink:0">Fondo...</button>',
+    '    <button class="btn-small" id="lwBtnBg" style="flex-shrink:0">BG...</button>',
     '    <div class="lu-info" id="lwBgInfo" style="margin:0;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">&mdash;</div>',
     '  </div>',
-    '  <div class="lu-info" id="lwInfo" style="margin-bottom:4px">Abre la secuencia <b>test</b> activa y pulsa Apply.</div>',
+    '  <div class="lu-info" id="lwInfo" style="margin-bottom:4px">Open the active <b>test</b> sequence and press Apply.</div>',
     '  <button class="btn-lu-run" id="lwBtnRun" style="width:100%">&#9654;&#9654; Apply to all chapters</button>',
     '  <button class="btn-small" id="lwBtnPluginDx" style="width:100%;margin-top:6px">&#127900; Apply Plugin dx</button>',
     '  <div style="display:flex;align-items:center;gap:6px;margin-top:6px;margin-bottom:4px">',
-    '    <button class="btn-small" id="lwBtnDir" style="flex-shrink:0">Carpeta...</button>',
+    '    <button class="btn-small" id="lwBtnDir" style="flex-shrink:0">Folder...</button>',
     '    <div class="lu-info" id="lwDirInfo" style="margin:0;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">&mdash;</div>',
     '  </div>',
     '  <div style="display:flex;gap:6px;margin-top:2px">',
@@ -160,7 +160,7 @@ document.getElementById('app').innerHTML = [
     '</div>',
     '<div class="tool-divider">PP26 AI Diagnostic <span class="tool-ver">v1</span></div>',
     '<div class="section">',
-    '  <div class="lu-info" style="margin-bottom:6px">Detecta si PP26 expone API para background removal / object tracking.</div>',
+    '  <div class="lu-info" style="margin-bottom:6px">Detects if PP26 exposes API for background removal / object tracking.</div>',
     '  <button class="btn-at" style="width:100%" id="btnPP26Diag">&#128269; Run diagnostic</button>',
     '  <pre id="pp26DiagOut" style="margin-top:8px;font-size:9px;max-height:200px;overflow:auto;white-space:pre-wrap;display:none;background:#1a1a1a;padding:6px;border-radius:4px"></pre>',
     '</div>',
@@ -2083,7 +2083,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
     // Intro-Outro file picker
     lwBtnIO.addEventListener('click', function () {
-        var jsx = 'var _f=File.openDialog("Selecciona Intro-Outro","*.mp4,*.mov");_f?_f.fsName:"";';
+        var jsx = 'var _f=File.openDialog("Select Intro-Outro","*.mp4,*.mov");_f?_f.fsName:"";';
         window.__adobe_cep__.evalScript(jsx, function(res) {
             if (res && res !== 'undefined' && res !== '') {
                 lwIOPath = res;
@@ -2100,7 +2100,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
     var lwBtnBg = document.getElementById('lwBtnBg');
     if (lwBtnBg) {
         lwBtnBg.addEventListener('click', function () {
-            var jsx = 'var _f=File.openDialog("Selecciona fondo","*.mp4,*.mov,*.png,*.jpg");_f?_f.fsName:"";';
+            var jsx = 'var _f=File.openDialog("Select background","*.mp4,*.mov,*.png,*.jpg");_f?_f.fsName:"";';
             window.__adobe_cep__.evalScript(jsx, function(res) {
                 if (res && res !== 'undefined' && res !== '') {
                     lwBgPath = res;
@@ -2156,22 +2156,22 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 lwInps.autY.value = Math.round(d.aut.y * _h * 10) / 10;
                 lwInps.autS.value = Math.round(d.aut.s * 10) / 10;
                 lwSave();
-                lwLog('Capturado: Tablero (' + lwInps.tblX.value + ', ' + lwInps.tblY.value + ') s=' + lwInps.tblS.value +
-                      ' | Autor (' + lwInps.autX.value + ', ' + lwInps.autY.value + ') s=' + lwInps.autS.value);
+                lwLog('Captured: Board (' + lwInps.tblX.value + ', ' + lwInps.tblY.value + ') s=' + lwInps.tblS.value +
+                      ' | Author (' + lwInps.autX.value + ', ' + lwInps.autY.value + ') s=' + lwInps.autS.value);
             } catch(e) { lwLog('Parse error: ' + res); }
         });
     });
 
     lwBtn.addEventListener('click', function () {
         lwBtn.disabled = true;
-        lwLog('Leyendo secuencia test...');
+        lwLog('Reading test sequence...');
 
         // ── Phase 1: read test sequence ──────────────────────────────────
         var jsx1 =
             'var _r={ok:false,err:"",cutStartT:0,cutEndT:0,fps:0,w:0,h:0,testChapPath:"",tracks:[]};' +
             'try{' +
                 'var _sq=app.project.activeSequence;' +
-                'if(!_sq)throw new Error("No hay secuencia activa");' +
+                'if(!_sq)throw new Error("No active sequence");' +
                 '_r.seqName=_sq.name;' +
                 '_r.fps=_sq.timebase;' +
                 '_r.w=_sq.frameSizeHorizontal;' +
@@ -2257,7 +2257,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                         'break;' + // only first clip per track for ordering
                     '}' +
                 '}' +
-                'if(_chapVClips.length===0)throw new Error("No hay clips del capítulo test");' +
+                'if(_chapVClips.length===0)throw new Error("No chapter clips found in test");' +
                 // Sort by sequence start time to find intro (earliest) and outro (latest)
                 '_chapVClips.sort(function(a,b){return parseFloat(a.start.ticks)-parseFloat(b.start.ticks);});' +
                 // Use first video track with chapter clips to get per-track clip list (in time order)
@@ -2307,7 +2307,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
             var cutEndT   = data.cutEndT;
             var cutStartS = (cutStartT / 254016000000).toFixed(2);
             var cutEndS   = (cutEndT   / 254016000000).toFixed(2);
-            lwLog('Test leído: corte inicio=' + cutStartS + 's, fin=' + cutEndS + 's<br>Buscando capítulos...');
+            lwLog('Test read: start cut=' + cutStartS + 's, end=' + cutEndS + 's<br>Looking for chapters...');
 
             // ── Phase 2: find all chapter project items (video, no PREVIEW) ──
             var jsx2 =
@@ -2329,8 +2329,8 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
             window.__adobe_cep__.evalScript(jsx2, function (res2) {
                 var chapters;
-                try { chapters = JSON.parse(res2); } catch(e) { lwLog('Error capítulos: ' + res2); lwBtn.disabled = false; return; }
-                if (!chapters.length) { lwLog('No se encontraron capítulos (mp4/mov sin PREVIEW) en el proyecto.'); lwBtn.disabled = false; return; }
+                try { chapters = JSON.parse(res2); } catch(e) { lwLog('Error parsing chapters: ' + res2); lwBtn.disabled = false; return; }
+                if (!chapters.length) { lwLog('No chapters found (mp4/mov without PREVIEW) in the project.'); lwBtn.disabled = false; return; }
 
                 lwLog('Capítulos encontrados: ' + chapters.length + '<br>Procesando...');
 
@@ -2606,7 +2606,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     } catch(logE) {
                         try { cep.fs.writeFile('/Users/raulmartinez/Desktop/lw_log.txt', lines.join('\n'), cep.encoding.UTF8); } catch(e2) {}
                     }
-                    lwLog('Listo: ' + ok + ' secuencias creadas, ' + err + ' omitidas.<br><small>' + lines.join('<br>') + '</small>');
+                    lwLog('Done: ' + ok + ' sequences created, ' + err + ' skipped.<br><small>' + lines.join('<br>') + '</small>');
                 });
             });
         });
@@ -2617,14 +2617,14 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
     if (lwBtnPluginDx) {
         lwBtnPluginDx.addEventListener('click', function () {
             lwBtnPluginDx.disabled = true;
-            lwLog('Leyendo plugins de audio del test...');
+            lwLog('Reading audio plugins from test...');
 
             // Phase 1: capture audio comps from active test sequence
             var jsx1 =
                 'var _r={ok:false,err:"",audioTracks:[]};' +
                 'try{' +
                     'var _sq=app.project.activeSequence;' +
-                    'if(!_sq)throw new Error("No hay secuencia activa");' +
+                    'if(!_sq)throw new Error("No active sequence");' +
                     'function _readComps(clip){' +
                         'var out=[];' +
                         'try{for(var i=0;i<clip.components.numItems;i++){' +
@@ -2652,8 +2652,8 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 var data;
                 try { data = JSON.parse(res1); } catch(e) { lwLog('Error JSON: ' + res1); lwBtnPluginDx.disabled = false; return; }
                 if (!data.ok) { lwLog('Error capturando plugins: ' + data.err); lwBtnPluginDx.disabled = false; return; }
-                if (!data.audioTracks.length) { lwLog('No se encontraron pistas de audio en la secuencia test.'); lwBtnPluginDx.disabled = false; return; }
-                lwLog('Audio tracks capturados: ' + data.audioTracks.length + '. Aplicando a capítulos...');
+                if (!data.audioTracks.length) { lwLog('No audio tracks found in test sequence.'); lwBtnPluginDx.disabled = false; return; }
+                lwLog('Audio tracks captured: ' + data.audioTracks.length + '. Applying to chapters...');
 
                 // Phase 2: apply to all chapter sequences
                 var jsx2 =
@@ -2701,7 +2701,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 window.__adobe_cep__.evalScript(jsx2, function (res2) {
                     lwBtnPluginDx.disabled = false;
                     var lines = (res2 || '').split('|').filter(function(l){ return l.trim(); });
-                    lwLog('Plugin dx aplicado a ' + lines.length + ' secuencias.<br><small>' + lines.join('<br>') + '</small>');
+                    lwLog('Plugin dx applied to ' + lines.length + ' sequences.<br><small>' + lines.join('<br>') + '</small>');
                 });
             });
         });
@@ -2747,7 +2747,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
     if (lwBtnDir) {
         lwBtnDir.addEventListener('click', function () {
             try {
-                var _dlg = cep.fs.showOpenDialog(false, true, 'Carpeta de destino para los MP4', lwExportDir || (_lwHomeDir + '/Desktop'), null);
+                var _dlg = cep.fs.showOpenDialog(false, true, 'Output folder for MP4s', lwExportDir || (_lwHomeDir + '/Desktop'), null);
                 if (_dlg && _dlg.err === 0 && _dlg.data && _dlg.data[0]) {
                     var _raw = _dlg.data[0];
                     // CEP returns file:// URI — convert to plain path
@@ -2757,7 +2757,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     if (lwDirInfo) lwDirInfo.textContent = lwExportDir.split('/').pop() || lwExportDir;
                     try { localStorage.setItem('lw_export_dir', lwExportDir); } catch(e) {}
                 }
-            } catch (_de) { lwLog('Error abriendo selector de carpeta: ' + _de.message); }
+            } catch (_de) { lwLog('Error opening folder picker: ' + _de.message); }
         });
     }
 
@@ -2766,7 +2766,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
     var LW_PRESET = '/Users/raulmartinez/Desktop/chess.com/Chessable Vimeo Export.epr';
     if (lwBtnAME) {
         lwBtnAME.addEventListener('click', function () {
-            if (!lwExportDir) { lwLog('AME: primero selecciona la carpeta de destino (botón Carpeta...).'); return; }
+            if (!lwExportDir) { lwLog('AME: select the output folder first (Folder... button).'); return; }
             var exportDir = lwExportDir;
             lwBtnAME.disabled = true;
             lwLog('AME: enviando a Media Encoder...');
