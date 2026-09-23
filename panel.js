@@ -1757,12 +1757,14 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 '}}';
         }
 
-        jsx += 'if(delNames.length){for(var _dvi=0;_dvi<seq.videoTracks.numTracks;_dvi++){' +
+        jsx += 'if(delNames.length){' +
+            'var _delHasPsd=false;for(var _pxi=0;_pxi<delNames.length;_pxi++){if(/\\.psd$/i.test(delNames[_pxi])){_delHasPsd=true;break;}}' +
+            'for(var _dvi=0;_dvi<seq.videoTracks.numTracks;_dvi++){' +
             'var _dvt=seq.videoTracks[_dvi];var _dDel=[];' +
             'for(var _dci=0;_dci<_dvt.clips.numItems;_dci++){var _dcl=_dvt.clips[_dci];' +
-                'if(_dcl.projectItem&&delNames.indexOf(_dcl.projectItem.name)>=0)_dDel.push(_dci);}' +
+                'if(_dcl.projectItem&&(delNames.indexOf(_dcl.projectItem.name)>=0||(_delHasPsd&&/\\.psd$/i.test(_dcl.projectItem.name))))_dDel.push(_dci);}' +
             'for(var _dri=_dDel.length-1;_dri>=0;_dri--){' +
-                'try{_dvt.clips[_dDel[_dri]].remove(false,false);results.push("del V"+(_dvi+1));}' +
+                'try{var _dn=_dvt.clips[_dDel[_dri]].projectItem?_dvt.clips[_dDel[_dri]].projectItem.name:"?";_dvt.clips[_dDel[_dri]].remove(false,false);results.push("del:"+_dn);}' +
                 'catch(e){results.push("delERR:"+e.message);}}}}';
 
         if (bgPath) {
