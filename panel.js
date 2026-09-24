@@ -147,7 +147,11 @@ document.getElementById('app').innerHTML = [
     '  </div>',
     '  <div class="lu-info" id="lwInfo" style="margin-bottom:4px">Open the active <b>test</b> sequence and press Apply.</div>',
     '  <button class="btn-lu-run" id="lwBtnRun" style="width:100%">&#9654;&#9654; Apply to all chapters</button>',
-    '  <button class="btn-small" id="lwBtnPluginDx" style="width:100%;margin-top:6px">&#127900; Apply Plugin dx</button>',
+    '  <div style="display:flex;align-items:center;gap:6px;margin-top:6px">',
+    '    <button class="btn-small" id="lwBtnPluginPreset" style="flex-shrink:0">Plugin preset...</button>',
+    '    <div class="lu-info" id="lwPluginPresetInfo" style="margin:0;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">&mdash;</div>',
+    '  </div>',
+    '  <button class="btn-small" id="lwBtnPluginDx" style="width:100%;margin-top:4px">&#127900; Apply Plugin dx</button>',
     '  <div style="display:flex;align-items:center;gap:6px;margin-top:6px;margin-bottom:4px">',
     '    <button class="btn-small" id="lwBtnDir" style="flex-shrink:0">Folder...</button>',
     '    <div class="lu-info" id="lwDirInfo" style="margin:0;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">&mdash;</div>',
@@ -2612,11 +2616,64 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         });
     });
 
+    // ── Plugin preset picker ────────────────────────────────────────────────
+    var lwPluginPresetPath = '';
+    try { var _lsPP = localStorage.getItem('lw_plugin_preset'); if (_lsPP) { lwPluginPresetPath = _lsPP; document.getElementById('lwPluginPresetInfo').textContent = _lsPP.split('/').pop(); } } catch(e) {}
+
+    var lwBtnPluginPreset = document.getElementById('lwBtnPluginPreset');
+    if (lwBtnPluginPreset) {
+        lwBtnPluginPreset.addEventListener('click', function () {
+            var jsx = 'var _f=File.openDialog("Select audio effects preset","*.epr");_f?_f.fsName:"";';
+            window.__adobe_cep__.evalScript(jsx, function (res) {
+                if (!res || res === '') return;
+                lwPluginPresetPath = res;
+                try { localStorage.setItem('lw_plugin_preset', res); } catch(e) {}
+                document.getElementById('lwPluginPresetInfo').textContent = res.split('/').pop();
+                lwLog('Plugin preset: ' + res.split('/').pop());
+            });
+        });
+    }
+
     // ── Apply Plugin dx ──────────────────────────────────────────────────────
     var lwBtnPluginDx = document.getElementById('lwBtnPluginDx');
     if (lwBtnPluginDx) {
         lwBtnPluginDx.addEventListener('click', function () {
             lwBtnPluginDx.disabled = true;
+
+            // ── Preset path mode: apply .epr to all chapter audio clips ──────
+            if (lwPluginPresetPath) {
+                lwLog('Applying preset: ' + lwPluginPresetPath.split('/').pop() + '...');
+                var presetEsc = lwPluginPresetPath.replace(/\\/g, '/').replace(/"/g, '\\"');
+                var jsxP =
+                    'var _OUT=[];' +
+                    'var _presetPath="' + presetEsc + '";' +
+                    'function _skip(n){var nl=n.toLowerCase();return nl==="test"||nl.indexOf("test")===0||nl.indexOf("nested sequence")===0||n.indexOf("PREVIEW")>=0;}' +
+                    'for(var _si=0;_si<app.project.sequences.numSequences;_si++){' +
+                        'try{' +
+                            'var _seq=app.project.sequences[_si];' +
+                            'if(!_seq||_skip(_seq.name))continue;' +
+                            'var _applied=[];' +
+                            'for(var _ati=0;_ati<_seq.audioTracks.numTracks;_ati++){' +
+                                'var _at=_seq.audioTracks[_ati];' +
+                                'if(_at.clips.numItems===0)continue;' +
+                                'var _ac=_at.clips[0];if(!_ac)_ac=_at.clips[1];' +
+                                'if(!_ac)continue;' +
+                                'try{_ac.applyPreset(_presetPath);_applied.push("A"+_ati+":ok");}' +
+                                'catch(e){_applied.push("A"+_ati+":fail("+e.message+")");}' +
+                            '}' +
+                            'if(_applied.length)_OUT.push(_seq.name+": "+_applied.join(" "));' +
+                        '}catch(e){_OUT.push("err-seq:"+e.message);}' +
+                    '}' +
+                    '_OUT.join("|");';
+                window.__adobe_cep__.evalScript(jsxP, function (resP) {
+                    lwBtnPluginDx.disabled = false;
+                    var lines = (resP || '').split('|').filter(function(l){ return l.trim(); });
+                    lwLog('Preset applied to ' + lines.length + ' sequences.<br><small>' + lines.join('<br>') + '</small>');
+                });
+                return;
+            }
+
+            // ── Fallback: copy params from active test sequence ───────────────
             lwLog('Reading audio plugins from test...');
 
             // Phase 1: capture audio comps from active test sequence
