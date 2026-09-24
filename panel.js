@@ -2639,41 +2639,6 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
     if (lwBtnPluginDx) {
         lwBtnPluginDx.addEventListener('click', function () {
             lwBtnPluginDx.disabled = true;
-
-            // ── Preset path mode: apply .epr to all chapter audio clips ──────
-            if (lwPluginPresetPath) {
-                lwLog('Applying preset: ' + lwPluginPresetPath.split('/').pop() + '...');
-                var presetEsc = lwPluginPresetPath.replace(/\\/g, '/').replace(/"/g, '\\"');
-                var jsxP =
-                    'var _OUT=[];' +
-                    'var _presetPath="' + presetEsc + '";' +
-                    'function _skip(n){var nl=n.toLowerCase();return nl==="test"||nl.indexOf("test")===0||nl.indexOf("nested sequence")===0||n.indexOf("PREVIEW")>=0;}' +
-                    'for(var _si=0;_si<app.project.sequences.numSequences;_si++){' +
-                        'try{' +
-                            'var _seq=app.project.sequences[_si];' +
-                            'if(!_seq||_skip(_seq.name))continue;' +
-                            'var _applied=[];' +
-                            'for(var _ati=0;_ati<_seq.audioTracks.numTracks;_ati++){' +
-                                'var _at=_seq.audioTracks[_ati];' +
-                                'if(_at.clips.numItems===0)continue;' +
-                                'var _ac=_at.clips[0];if(!_ac)_ac=_at.clips[1];' +
-                                'if(!_ac)continue;' +
-                                'try{_ac.applyPreset(_presetPath);_applied.push("A"+_ati+":ok");}' +
-                                'catch(e){_applied.push("A"+_ati+":fail("+e.message+")");}' +
-                            '}' +
-                            'if(_applied.length)_OUT.push(_seq.name+": "+_applied.join(" "));' +
-                        '}catch(e){_OUT.push("err-seq:"+e.message);}' +
-                    '}' +
-                    '_OUT.join("|");';
-                window.__adobe_cep__.evalScript(jsxP, function (resP) {
-                    lwBtnPluginDx.disabled = false;
-                    var lines = (resP || '').split('|').filter(function(l){ return l.trim(); });
-                    lwLog('Preset applied to ' + lines.length + ' sequences.<br><small>' + lines.join('<br>') + '</small>');
-                });
-                return;
-            }
-
-            // ── Fallback: copy params from active test sequence ───────────────
             lwLog('Reading audio plugins from test...');
 
             // Phase 1: capture audio comps from active test sequence
@@ -2718,7 +2683,10 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 try { data = JSON.parse(res1); } catch(e) { lwLog('Error JSON: ' + res1); lwBtnPluginDx.disabled = false; return; }
                 if (!data.ok) { lwLog('Error reading plugins: ' + data.err); lwBtnPluginDx.disabled = false; return; }
                 if (!data.audioTracks.length) { lwLog('No audio tracks found in test sequence.'); lwBtnPluginDx.disabled = false; return; }
-                lwLog('Audio tracks captured: ' + data.audioTracks.length + '. Applying to chapters...');
+                // Log captured matchNames so we can debug addEffect
+                var matchInfo = [];
+                data.audioTracks.forEach(function(at) { at.comps.forEach(function(c) { if (c.matchName) matchInfo.push(c.name + '=' + c.matchName); }); });
+                lwLog('Captured: ' + matchInfo.join(', ') + '<br>Applying...');
 
                 // Phase 2: add missing effects + copy params to all chapter sequences
                 var jsx2 =
@@ -2733,7 +2701,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                                 'var src=compsData[di];if(!src.matchName)continue;' +
                                 'var found=false;' +
                                 'for(var ci=0;ci<newClip.components.numItems;ci++){if(newClip.components[ci].displayName===src.name){found=true;break;}}' +
-                                'if(!found){try{newClip.addEffect(src.matchName);log.push("added:"+src.name);}catch(e){log.push("addFail:"+src.name);}}' +
+                                'if(!found){try{newClip.addEffect(src.matchName);log.push("added:"+src.name);}catch(e){log.push("addFail:"+src.name+":"+e.message);}}' +
                             '}' +
                             // Step B: copy params on all matching components
                             'for(var ci2=0;ci2<newClip.components.numItems;ci2++){' +
