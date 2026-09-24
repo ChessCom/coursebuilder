@@ -2645,28 +2645,33 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
             // _readComps: only stores serializable values (no opaque plugin blobs)
             var jsx1 =
                 'var _r={ok:false,err:"",audioTracks:[]};' +
+                // helpers outside try so function declarations are at script top level
+                'function _safeVal(v){' +
+                    'try{var t=typeof v;' +
+                    'if(t==="number"||t==="boolean"||t==="string")return v;' +
+                    'if(v&&t==="object"){' +
+                        'try{var l=v.length;if(typeof l==="number"&&l>=0&&l<500){' +
+                            'var a=[];for(var _i=0;_i<l;_i++){if(typeof v[_i]==="number")a.push(v[_i]);}return a;}' +
+                        '}catch(_e2){}' +
+                    '}' +
+                    '}catch(_e){}return null;}' +
+                'function _readComps(clip){' +
+                    'var out=[];' +
+                    'try{for(var i=0;i<clip.components.numItems;i++){' +
+                        'var co=clip.components[i];' +
+                        // ensure matchName is always a plain string
+                        'var mn="";try{var _mnv=co.matchName;if(typeof _mnv==="string")mn=_mnv;}catch(e){}' +
+                        'var coInfo={name:String(co.displayName||""),matchName:mn,params:[]};' +
+                        'try{for(var j=0;j<co.properties.numItems;j++){' +
+                            'var pp=co.properties[j];' +
+                            'try{var sv=_safeVal(pp.getValue());if(sv!==null)coInfo.params.push({name:String(pp.displayName||""),val:sv});}catch(e){}' +
+                        '}}catch(e){}' +
+                        'out.push(coInfo);' +
+                    '}}catch(e){}' +
+                    'return out;}' +
                 'try{' +
                     'var _sq=app.project.activeSequence;' +
                     'if(!_sq)throw new Error("No active sequence");' +
-                    'function _safeVal(v){' +
-                        'var t=typeof v;' +
-                        'if(t==="number"||t==="boolean"||t==="string")return v;' +
-                        'if(v&&t==="object"&&typeof v.length==="number"){' +
-                            'var a=[];for(var i=0;i<v.length;i++){if(typeof v[i]==="number")a.push(v[i]);}return a;}' +
-                        'return null;}' +
-                    'function _readComps(clip){' +
-                        'var out=[];' +
-                        'try{for(var i=0;i<clip.components.numItems;i++){' +
-                            'var co=clip.components[i];' +
-                            'var mn="";try{mn=co.matchName||"";}catch(e){}' +
-                            'var coInfo={name:co.displayName,matchName:mn,params:[]};' +
-                            'try{for(var j=0;j<co.properties.numItems;j++){' +
-                                'var pp=co.properties[j];' +
-                                'try{var sv=_safeVal(pp.getValue());if(sv!==null)coInfo.params.push({name:pp.displayName,val:sv});}catch(e){}' +
-                            '}}catch(e){}' +
-                            'out.push(coInfo);' +
-                        '}}catch(e){}' +
-                        'return out;}' +
                     'for(var _ati=0;_ati<_sq.audioTracks.numTracks;_ati++){' +
                         'var _at=_sq.audioTracks[_ati];' +
                         'if(_at.clips.numItems===0)continue;' +
@@ -2676,7 +2681,9 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     '}' +
                     '_r.ok=true;' +
                 '}catch(e){_r.err=e.message;}' +
-                'JSON.stringify(_r);';
+                // wrap stringify so a bad value can't cause EvalScript error
+                'var _js="{}";try{_js=JSON.stringify(_r);}catch(e){_js=JSON.stringify({ok:false,err:"stringify:"+e.message,audioTracks:[]});}' +
+                '_js;';
 
             window.__adobe_cep__.evalScript(jsx1, function (res1) {
                 var data;
