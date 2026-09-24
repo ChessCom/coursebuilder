@@ -2641,8 +2641,12 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
             lwBtnPluginDx.disabled = true;
             lwLog('Reading audio plugins from test...');
 
-            // Phase 1: plain-text scan — no JSON, no complex serialization
-            // Returns: "A0|compName~matchName~p:paramName=val,...|...|A1|..."
+            // Phase 1: scan clip-level AND track-level components from active sequence
+            // Output tokens separated by |:
+            //   "TRACK:N"        — start of audio track N
+            //   "TRK:name~mn"    — track-level component
+            //   "CLIP:name~mn"   — clip-level component
+            //   "ERR:msg"        — error
             var jsx1 =
                 '(function(){' +
                 'var out=[];' +
@@ -2651,21 +2655,26 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     'if(!sq)return "ERR:no active sequence";' +
                     'for(var ai=0;ai<sq.audioTracks.numTracks;ai++){' +
                         'var at=sq.audioTracks[ai];' +
-                        'if(!at||at.clips.numItems===0)continue;' +
-                        'var ac=at.clips[0];if(!ac)ac=at.clips[1];if(!ac)continue;' +
-                        'out.push("A"+ai);' +
-                        'for(var ci=0;ci<ac.components.numItems;ci++){' +
-                            'var co=ac.components[ci];' +
-                            'var nm="?";try{nm=String(co.displayName);}catch(e){}' +
-                            'var mn="";try{mn=String(co.matchName||"");}catch(e){}' +
-                            'var ps=[];' +
-                            'try{for(var pi=0;pi<co.properties.numItems;pi++){' +
-                                'var pp=co.properties[pi];' +
-                                'var pn="?";try{pn=String(pp.displayName);}catch(e){}' +
-                                'var pv="?";try{var _v=pp.getValue();pv=(typeof _v==="number"||typeof _v==="boolean")?String(_v):"obj";}catch(e){pv="err";}' +
-                                'ps.push(pn+"="+pv);' +
-                            '}}catch(e){}' +
-                            'out.push(nm+"~"+mn+"~p:"+ps.join(";"));' +
+                        'var nClips=at.clips.numItems;' +
+                        'out.push("TRACK:"+ai);' +
+                        // track-level components
+                        'try{if(at.components&&at.components.numItems>0){' +
+                            'for(var ti=0;ti<at.components.numItems;ti++){' +
+                                'var tc=at.components[ti];' +
+                                'var tnm="?";try{tnm=String(tc.displayName);}catch(e){}' +
+                                'var tmn="";try{tmn=String(tc.matchName||"");}catch(e){}' +
+                                'out.push("TRK:"+tnm+"~"+tmn);' +
+                            '}' +
+                        '}}catch(e){out.push("TRK-ERR:"+e.message);}' +
+                        // clip-level components (first clip)
+                        'if(nClips>0){' +
+                            'var ac=at.clips[0];if(!ac)ac=at.clips[1];' +
+                            'if(ac){try{for(var ci=0;ci<ac.components.numItems;ci++){' +
+                                'var co=ac.components[ci];' +
+                                'var nm="?";try{nm=String(co.displayName);}catch(e){}' +
+                                'var mn="";try{mn=String(co.matchName||"");}catch(e){}' +
+                                'out.push("CLIP:"+nm+"~"+mn);' +
+                            '}}catch(e){out.push("CLIP-ERR:"+e.message);}}' +
                         '}' +
                     '}' +
                 '}catch(e){out.push("ERR:"+e.message);}' +
@@ -2673,93 +2682,115 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 '})();';
 
             window.__adobe_cep__.evalScript(jsx1, function (res1) {
-                if (!res1 || res1.indexOf('ERR:') === 0 || res1 === 'EvalScript error.') {
+                if (!res1 || res1 === 'EvalScript error.' || res1.indexOf('ERR:') === 0) {
                     lwLog('Phase 1 failed: ' + res1);
                     lwBtnPluginDx.disabled = false;
                     return;
                 }
-                lwLog('Phase 1 raw: ' + res1);
 
-                // Parse plain-text result into audioTracks structure
-                var audioTracks = [];
-                var currentTrack = null;
+                // Parse: build per-track lists of clip-level and track-level comps
+                // clipTracks[idx] = [{ name, matchName }]
+                // trkTracks[idx]  = [{ name, matchName }]
+                var clipTracks = {};
+                var trkTracks = {};
+                var curIdx = -1;
                 var parts = res1.split('|');
                 for (var pi = 0; pi < parts.length; pi++) {
                     var p = parts[pi];
-                    if (/^A\d+$/.test(p)) {
-                        currentTrack = { idx: parseInt(p.slice(1), 10), comps: [] };
-                        audioTracks.push(currentTrack);
-                    } else if (currentTrack) {
-                        var tilde = p.split('~');
-                        var paramStr = tilde[2] ? tilde[2].replace(/^p:/, '') : '';
-                        var params = paramStr ? paramStr.split(';').map(function(s) {
-                            var eq = s.indexOf('='); return { name: s.slice(0, eq), val: parseFloat(s.slice(eq+1)) };
-                        }).filter(function(x) { return !isNaN(x.val); }) : [];
-                        currentTrack.comps.push({ name: tilde[0], matchName: tilde[1] || '', params: params });
+                    if (p.indexOf('TRACK:') === 0) {
+                        curIdx = parseInt(p.slice(6), 10);
+                        if (!clipTracks[curIdx]) clipTracks[curIdx] = [];
+                        if (!trkTracks[curIdx]) trkTracks[curIdx] = [];
+                    } else if (curIdx >= 0 && p.indexOf('TRK:') === 0) {
+                        var tilde = p.slice(4).split('~');
+                        trkTracks[curIdx].push({ name: tilde[0], matchName: tilde[1] || '' });
+                    } else if (curIdx >= 0 && p.indexOf('CLIP:') === 0) {
+                        var tilde2 = p.slice(5).split('~');
+                        clipTracks[curIdx].push({ name: tilde2[0], matchName: tilde2[1] || '' });
                     }
                 }
 
-                if (!audioTracks.length) { lwLog('No audio tracks found in test sequence.'); lwBtnPluginDx.disabled = false; return; }
-                var matchInfo = [];
-                audioTracks.forEach(function(at) { at.comps.forEach(function(c) { if (c.matchName) matchInfo.push(c.name+'='+c.matchName); }); });
-                lwLog('Captured: ' + matchInfo.join(', ') + '<br>Applying...');
+                // Collect 3rd-party comps (skip built-in audio effects)
+                var builtIn = ['Internal Volume Stereo', 'Internal Channel Volume Stereo', 'Volume', 'Channel Volume', 'Panner'];
+                function isBuiltIn(nm) { for (var i=0;i<builtIn.length;i++) if (nm===builtIn[i]||nm.indexOf('Internal')===0) return true; return false; }
 
-                // Phase 2: add missing effects + copy params to all chapter sequences
+                var trkPlugins = []; // { idx, name, matchName }
+                var clipPlugins = [];
+                Object.keys(trkTracks).forEach(function(idx) {
+                    trkTracks[idx].forEach(function(c) { if (c.matchName && !isBuiltIn(c.name)) trkPlugins.push({ idx: parseInt(idx,10), name: c.name, matchName: c.matchName }); });
+                });
+                Object.keys(clipTracks).forEach(function(idx) {
+                    clipTracks[idx].forEach(function(c) { if (c.matchName && !isBuiltIn(c.name)) clipPlugins.push({ idx: parseInt(idx,10), name: c.name, matchName: c.matchName }); });
+                });
+
+                // Show diagnostic
+                var diagLines = [];
+                Object.keys(trkTracks).forEach(function(idx) {
+                    var tl = trkTracks[idx].map(function(c){return 'TRK:'+c.name;});
+                    var cl = clipTracks[idx].map(function(c){return 'CLIP:'+c.name;});
+                    if (tl.length||cl.length) diagLines.push('A'+idx+': '+tl.concat(cl).join(', '));
+                });
+                lwLog('Scan: ' + (diagLines.join(' | ') || '(empty)'));
+
+                if (!trkPlugins.length && !clipPlugins.length) {
+                    lwLog('No 3rd-party plugins found in test sequence. Add dxRevive to the test sequence audio first.');
+                    lwBtnPluginDx.disabled = false;
+                    return;
+                }
+
+                var found = trkPlugins.concat(clipPlugins).map(function(c){ return c.name+'@A'+c.idx+(c.matchName?'('+c.matchName+')':''); });
+                lwLog('Found plugins: ' + found.join(', ') + '<br>Applying to all chapters...');
+
+                // Phase 2: add missing track-level and clip-level effects to all chapter sequences
+                var trkData = JSON.stringify(trkPlugins);
+                var clipData = JSON.stringify(clipPlugins);
                 var jsx2 =
+                    '(function(){' +
                     'var _OUT=[];' +
-                    'var _audioTracks=' + JSON.stringify(data.audioTracks) + ';' +
-                    // Add effect if missing, then copy numeric params
-                    'function _applyComps(newClip,compsData){' +
-                        'var log=[];' +
-                        'try{' +
-                            // Step A: add any missing effects by matchName
-                            'for(var di=0;di<compsData.length;di++){' +
-                                'var src=compsData[di];if(!src.matchName)continue;' +
-                                'var found=false;' +
-                                'for(var ci=0;ci<newClip.components.numItems;ci++){if(newClip.components[ci].displayName===src.name){found=true;break;}}' +
-                                'if(!found){try{newClip.addEffect(src.matchName);log.push("added:"+src.name);}catch(e){log.push("addFail:"+src.name+":"+e.message);}}' +
-                            '}' +
-                            // Step B: copy params on all matching components
-                            'for(var ci2=0;ci2<newClip.components.numItems;ci2++){' +
-                                'var co=newClip.components[ci2];var srcCo=null;' +
-                                'for(var di2=0;di2<compsData.length;di2++){if(compsData[di2].name===co.displayName){srcCo=compsData[di2];break;}}' +
-                                'if(!srcCo||!srcCo.params.length)continue;' +
-                                'for(var pi=0;pi<co.properties.numItems;pi++){' +
-                                    'var pp=co.properties[pi];var srcP=null;' +
-                                    'for(var dpi=0;dpi<srcCo.params.length;dpi++){if(srcCo.params[dpi].name===pp.displayName){srcP=srcCo.params[dpi];break;}}' +
-                                    'if(!srcP)continue;' +
-                                    'try{pp.setValue(srcP.val,true);}catch(e){}' +
-                                '}' +
-                                'log.push(co.displayName);' +
-                            '}' +
-                        '}catch(e){log.push("err:"+e.message);}' +
-                        'return log.join(",");}' +
+                    'var _trkPlugins='+trkData+';' +
+                    'var _clipPlugins='+clipData+';' +
                     'function _skip(n){var nl=n.toLowerCase();return nl==="test"||nl.indexOf("test")===0||nl.indexOf("nested sequence")===0||n.indexOf("PREVIEW")>=0;}' +
+                    'function _hasComp(obj,nm){try{for(var i=0;i<obj.components.numItems;i++){if(obj.components[i].displayName===nm)return true;}}catch(e){}return false;}' +
                     'for(var _si=0;_si<app.project.sequences.numSequences;_si++){' +
                         'try{' +
                             'var _seq=app.project.sequences[_si];' +
                             'if(!_seq||_skip(_seq.name))continue;' +
-                            'var _applied=[];' +
-                            'for(var _ti=0;_ti<_audioTracks.length;_ti++){' +
-                                'var _td=_audioTracks[_ti];' +
-                                'if(!_td.comps||_td.comps.length===0)continue;' +
-                                'var _tk=null;' +
-                                'try{_tk=_seq.audioTracks[_td.idx];}catch(e){}' +
-                                'if(!_tk||_tk.clips.numItems===0)continue;' +
-                                'var _ac=_tk.clips[0];if(!_ac)_ac=_tk.clips[1];' +
-                                'if(!_ac)continue;' +
-                                'var _res=_applyComps(_ac,_td.comps);' +
-                                '_applied.push("A"+_td.idx+":["+_res+"]");' +
+                            'var _log=[];' +
+                            // track-level effects
+                            'for(var _ti=0;_ti<_trkPlugins.length;_ti++){' +
+                                'var _tp=_trkPlugins[_ti];' +
+                                'try{var _atrk=_seq.audioTracks[_tp.idx];if(!_atrk)continue;' +
+                                    'if(!_hasComp(_atrk,_tp.name)){' +
+                                        'try{_atrk.addEffect(_tp.matchName);_log.push("TRK+"+_tp.name);}' +
+                                        'catch(e){_log.push("TRK-FAIL:"+_tp.name+":"+e.message);}' +
+                                    '}else{_log.push("TRK-ok:"+_tp.name);}' +
+                                '}catch(e){_log.push("TRK-ERR:"+e.message);}' +
                             '}' +
-                            'if(_applied.length)_OUT.push(_seq.name+": "+_applied.join(" "));' +
-                        '}catch(e){_OUT.push("err-seq:"+e.message);}' +
+                            // clip-level effects
+                            'for(var _ci=0;_ci<_clipPlugins.length;_ci++){' +
+                                'var _cp=_clipPlugins[_ci];' +
+                                'try{var _atrk2=_seq.audioTracks[_cp.idx];if(!_atrk2||_atrk2.clips.numItems===0)continue;' +
+                                    'var _ac=_atrk2.clips[0];if(!_ac)continue;' +
+                                    'if(!_hasComp(_ac,_cp.name)){' +
+                                        'try{_ac.addEffect(_cp.matchName);_log.push("CLIP+"+_cp.name);}' +
+                                        'catch(e){_log.push("CLIP-FAIL:"+_cp.name+":"+e.message);}' +
+                                    '}else{_log.push("CLIP-ok:"+_cp.name);}' +
+                                '}catch(e){_log.push("CLIP-ERR:"+e.message);}' +
+                            '}' +
+                            'if(_log.length)_OUT.push(_seq.name+": "+_log.join(" "));' +
+                        '}catch(e){_OUT.push("seq-err:"+e.message);}' +
                     '}' +
-                    '_OUT.join("|");';
+                    'return _OUT.join("|");' +
+                    '})();';
 
                 window.__adobe_cep__.evalScript(jsx2, function (res2) {
                     lwBtnPluginDx.disabled = false;
-                    var lines = (res2 || '').split('|').filter(function(l){ return l.trim(); });
-                    lwLog('Plugin dx applied to ' + lines.length + ' sequences.<br><small>' + lines.join('<br>') + '</small>');
+                    if (!res2 || res2 === 'EvalScript error.') {
+                        lwLog('Phase 2 failed: ' + res2);
+                        return;
+                    }
+                    var lines = res2.split('|').filter(function(l){ return l.trim(); });
+                    lwLog('Done: ' + lines.length + ' sequences.<br><small>' + lines.join('<br>') + '</small>');
                 });
             });
         });
