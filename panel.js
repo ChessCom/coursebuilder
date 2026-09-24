@@ -1,10 +1,10 @@
-/* Course Builder Panel v128 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v129 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v128</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v129</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2730,6 +2730,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                         'var _testSeq=null;' +
                         'for(var ti=0;ti<app.project.sequences.numSequences;ti++){var ts=app.project.sequences[ti];if(ts&&ts.name&&ts.name.toLowerCase()==="test"){_testSeq=ts;break;}}' +
                         'if(!_testSeq)return "ERR:no-test-seq";' +
+                        'try{app.project.openSequence(_testSeq.sequenceID);}catch(e){}' +
                         'app.project.activeSequence=_testSeq;' +
                         'var _tat=_testSeq.audioTracks[_tr];' +
                         'if(!_tat||_tat.clips.numItems===0)return "ERR:no-clip-in-test";' +
@@ -2841,6 +2842,8 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                                 'var sq=app.project.sequences[si];' +
                                 'if(!sq)continue;' +
                                 'try{if(sq.sequenceID!==_id)continue;}catch(e){continue;}' +
+                                // openSequence opens it as a tab in the Timeline (required for Paste Attrs to work)
+                                'try{app.project.openSequence(sq.sequenceID);}catch(e){}' +
                                 'app.project.activeSequence=sq;' +
                                 'var _at=sq.audioTracks[_tr];' +
                                 'if(!_at||_at.clips.numItems===0)return "no-clip:"+sq.name;' +
