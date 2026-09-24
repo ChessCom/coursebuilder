@@ -1,10 +1,10 @@
-/* Course Builder Panel v131 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v132 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v131</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v132</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2808,13 +2808,25 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     }
                     _cp.execSync('sleep 0.5');
 
-                    // Paste Attributes via menu — activate PP first, then trigger menu item directly
-                    // without clicking the menu bar (which deselects the clip).
+                    // Paste Attributes: click in the Timeline panel to give it focus,
+                    // then Cmd+A to select all clips, then Paste Attributes.
+                    // JSX clip.selected=true does NOT create a real UI selection;
+                    // a physical click at calculated window coordinates does.
                     _fs.writeFileSync('/tmp/pp_paste_attrs.scpt',
                         'tell application "Adobe Premiere Pro 2025" to activate\n' +
                         'delay 0.5\n' +
                         'tell application "System Events"\n' +
                         '  tell process "Adobe Premiere Pro 2025"\n' +
+                        '    set mainWin to front window\n' +
+                        '    set wx to item 1 of (get position of mainWin)\n' +
+                        '    set wy to item 2 of (get position of mainWin)\n' +
+                        '    set wh to item 2 of (get size of mainWin)\n' +
+                        '    set cx to wx + 350\n' +
+                        '    set cy to wy + (wh * 75 div 100)\n' +
+                        '    click at {cx, cy}\n' +
+                        '    delay 0.4\n' +
+                        '    keystroke "a" using {command down}\n' +
+                        '    delay 0.4\n' +
                         '    click menu item "Paste Attributes..." of menu 1 of menu bar item "Edit" of menu bar 1\n' +
                         '    delay 1.5\n' +
                         '    key code 36\n' +
@@ -2837,21 +2849,16 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                         }
 
                         var _ch = _chapters[idx];
-                        // Switch to chapter seq, select its audio clip
+                        // Open the chapter sequence in the Timeline
                         var _jsxSel =
                             '(function(){' +
                             'var _id=' + JSON.stringify(_ch.id) + ';' +
-                            'var _tr=' + _tr0 + ';' +
                             'for(var si=0;si<app.project.sequences.numSequences;si++){' +
                                 'var sq=app.project.sequences[si];' +
                                 'if(!sq)continue;' +
                                 'try{if(sq.sequenceID!==_id)continue;}catch(e){continue;}' +
-                                // openSequence opens it as a tab in the Timeline (required for Paste Attrs to work)
                                 'try{app.project.openSequence(sq.sequenceID);}catch(e){}' +
                                 'app.project.activeSequence=sq;' +
-                                'var _at=sq.audioTracks[_tr];' +
-                                'if(!_at||_at.clips.numItems===0)return "no-clip:"+sq.name;' +
-                                '_at.clips[0].selected=true;' +
                                 'return "ok:"+sq.name;' +
                             '}' +
                             'return "not-found";' +
@@ -3037,71 +3044,65 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     lwLog('[TEST 1 seq] Copied! Now opening chapter: <b>' + _chapters[0].name + '</b>');
                     _cp.execSync('sleep 0.5');
 
+                    // Paste script: click in timeline area to focus it, Cmd+A, Paste Attributes
                     _fs.writeFileSync('/tmp/pp_paste_attrs.scpt',
                         'tell application "Adobe Premiere Pro 2025" to activate\n' +
                         'delay 0.5\n' +
                         'tell application "System Events"\n' +
                         '  tell process "Adobe Premiere Pro 2025"\n' +
+                        '    set mainWin to front window\n' +
+                        '    set wx to item 1 of (get position of mainWin)\n' +
+                        '    set wy to item 2 of (get position of mainWin)\n' +
+                        '    set wh to item 2 of (get size of mainWin)\n' +
+                        '    set cx to wx + 350\n' +
+                        '    set cy to wy + (wh * 75 div 100)\n' +
+                        '    click at {cx, cy}\n' +
+                        '    delay 0.4\n' +
+                        '    keystroke "a" using {command down}\n' +
+                        '    delay 0.4\n' +
                         '    click menu item "Paste Attributes..." of menu 1 of menu bar item "Edit" of menu bar 1\n' +
                         '    delay 1.5\n' +
                         '    key code 36\n' +
                         '    delay 0.5\n' +
+                        '    return "clicked:" & cx & "," & cy\n' +
                         '  end tell\n' +
                         'end tell\n'
                     );
 
                     var _ch = _chapters[0];
+                    // Just open the sequence — no JSX clip.selected (it creates no real UI selection)
                     var _jsxSel =
                         '(function(){' +
                         'var _id=' + JSON.stringify(_ch.id) + ';' +
-                        'var _tr=' + _tr0 + ';' +
                         'for(var si=0;si<app.project.sequences.numSequences;si++){' +
                             'var sq=app.project.sequences[si];' +
                             'if(!sq)continue;' +
                             'try{if(sq.sequenceID!==_id)continue;}catch(e){continue;}' +
                             'try{app.project.openSequence(sq.sequenceID);}catch(e){}' +
                             'app.project.activeSequence=sq;' +
-                            'var _at=sq.audioTracks[_tr];' +
-                            'if(!_at||_at.clips.numItems===0)return "no-clip:"+sq.name;' +
-                            '_at.clips[0].selected=true;' +
-                            'return "ok:"+sq.name+"~sel:"+_at.clips[0].selected;' +
+                            'return "ok:"+sq.name;' +
                         '}' +
                         'return "not-found";' +
                         '})();';
 
                     window.__adobe_cep__.evalScript(_jsxSel, function(_resSel) {
-                        lwLog('[TEST 1 seq] JSX select result: <b>' + (_resSel || 'empty') + '</b>');
+                        lwLog('[TEST 1 seq] Opened sequence: <b>' + (_resSel || 'empty') + '</b>');
                         if (!_resSel || _resSel.indexOf('ok:') !== 0) {
-                            lwLog('[TEST 1 seq] Could not select clip in chapter sequence. Aborting.');
+                            lwLog('[TEST 1 seq] Could not open chapter sequence. Aborting.');
                             lwBtnPluginDxTest.disabled = false;
                             return;
                         }
 
-                        lwLog('[TEST 1 seq] Clip selected. Waiting 1s for Timeline to settle...');
+                        lwLog('[TEST 1 seq] Waiting 1s for Timeline to load, then clicking into timeline + Cmd+A + Paste Attributes...');
                         _cp.execSync('sleep 1.0');
 
-                        // Verify selection is still active right before paste
-                        var _jsxPreCheck =
-                            '(function(){' +
-                            'var sq=app.project.activeSequence;' +
-                            'if(!sq)return "no-active-seq";' +
-                            'var at=sq.audioTracks[' + _tr0 + '];' +
-                            'if(!at||at.clips.numItems===0)return "no-clip";' +
-                            'return "pre-paste~seq:"+sq.name+"~sel:"+at.clips[0].selected;' +
-                            '})();';
-
-                        window.__adobe_cep__.evalScript(_jsxPreCheck, function(_preCheck) {
-                            lwLog('[TEST 1 seq] Pre-paste check: <b>' + (_preCheck || 'empty') + '</b>');
-                            lwLog('[TEST 1 seq] Triggering Paste Attributes...');
-
-                            try {
-                                _cp.execSync('osascript /tmp/pp_paste_attrs.scpt', { timeout: 12000 });
-                                lwLog('[TEST 1 seq] <b>osascript completed.</b> Check Effect Controls on <b>' + _ch.name + '</b> — if dxRevive appears, it worked!');
-                            } catch(_pe) {
-                                lwLog('[TEST 1 seq] Paste error: ' + String(_pe.message || _pe).slice(0, 200));
-                            }
-                            lwBtnPluginDxTest.disabled = false;
-                        });
+                        try {
+                            var _pasteOut = _cp.execSync('osascript /tmp/pp_paste_attrs.scpt', { timeout: 12000 }).toString().trim();
+                            lwLog('[TEST 1 seq] <b>osascript done.</b> ' + _pasteOut + '<br>Check Effect Controls on <b>' + _ch.name + '</b>.');
+                        } catch(_pe) {
+                            lwLog('[TEST 1 seq] Paste error: ' + String(_pe.message || _pe).slice(0, 200));
+                        }
+                        lwBtnPluginDxTest.disabled = false;
                     });
                 });
             });
