@@ -1,10 +1,10 @@
-/* Course Builder Panel v127 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v128 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v127</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v128</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2771,12 +2771,16 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     var _cp = require('child_process');
                     var _fs = require('fs');
 
+                    // Use menu bar clicks — keyboard shortcuts go to the CEP panel
+                    // which has focus; menu items work regardless of panel focus.
                     _fs.writeFileSync('/tmp/pp_copy_clip.scpt',
                         'tell application "Adobe Premiere Pro 2025" to activate\n' +
-                        'delay 0.6\n' +
+                        'delay 0.5\n' +
                         'tell application "System Events"\n' +
                         '  tell process "Adobe Premiere Pro 2025"\n' +
-                        '    keystroke "c" using command down\n' +
+                        '    click menu bar item "Edit" of menu bar 1\n' +
+                        '    delay 0.3\n' +
+                        '    click menu item "Copy" of menu 1 of menu bar item "Edit" of menu bar 1\n' +
                         '  end tell\n' +
                         'end tell\n'
                     );
@@ -2800,14 +2804,16 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     }
                     _cp.execSync('sleep 0.5');
 
-                    // Paste Attributes script (reused for every chapter)
+                    // Paste Attributes via menu — works regardless of panel focus
                     _fs.writeFileSync('/tmp/pp_paste_attrs.scpt',
                         'tell application "System Events"\n' +
                         '  tell process "Adobe Premiere Pro 2025"\n' +
-                        '    keystroke "v" using {command down, option down}\n' +
+                        '    click menu bar item "Edit" of menu bar 1\n' +
+                        '    delay 0.3\n' +
+                        '    click menu item "Paste Attributes..." of menu 1 of menu bar item "Edit" of menu bar 1\n' +
                         '    delay 1.2\n' +
-                        '    key code 36\n' +  // Return — confirms the dialog
-                        '    delay 0.4\n' +
+                        '    key code 36\n' +
+                        '    delay 0.5\n' +
                         '  end tell\n' +
                         'end tell\n'
                     );
@@ -2853,8 +2859,11 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                                 return;
                             }
 
+                            // Small pause so PP finishes opening the sequence before pasting
+                            _cp.execSync('sleep 0.3');
+
                             try {
-                                _cp.execSync('osascript /tmp/pp_paste_attrs.scpt', { timeout: 10000 });
+                                _cp.execSync('osascript /tmp/pp_paste_attrs.scpt', { timeout: 12000 });
                                 _applied++;
                             } catch(_pe) {
                                 _errCount++;
