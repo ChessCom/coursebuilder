@@ -1,10 +1,10 @@
-/* Course Builder Panel v130 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v131 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v130</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v131</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2808,14 +2808,15 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     }
                     _cp.execSync('sleep 0.5');
 
-                    // Paste Attributes via menu — works regardless of panel focus
+                    // Paste Attributes via menu — activate PP first, then trigger menu item directly
+                    // without clicking the menu bar (which deselects the clip).
                     _fs.writeFileSync('/tmp/pp_paste_attrs.scpt',
+                        'tell application "Adobe Premiere Pro 2025" to activate\n' +
+                        'delay 0.5\n' +
                         'tell application "System Events"\n' +
                         '  tell process "Adobe Premiere Pro 2025"\n' +
-                        '    click menu bar item "Edit" of menu bar 1\n' +
-                        '    delay 0.3\n' +
                         '    click menu item "Paste Attributes..." of menu 1 of menu bar item "Edit" of menu bar 1\n' +
-                        '    delay 1.2\n' +
+                        '    delay 1.5\n' +
                         '    key code 36\n' +
                         '    delay 0.5\n' +
                         '  end tell\n' +
@@ -3037,12 +3038,12 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     _cp.execSync('sleep 0.5');
 
                     _fs.writeFileSync('/tmp/pp_paste_attrs.scpt',
+                        'tell application "Adobe Premiere Pro 2025" to activate\n' +
+                        'delay 0.5\n' +
                         'tell application "System Events"\n' +
                         '  tell process "Adobe Premiere Pro 2025"\n' +
-                        '    click menu bar item "Edit" of menu bar 1\n' +
-                        '    delay 0.3\n' +
                         '    click menu item "Paste Attributes..." of menu 1 of menu bar item "Edit" of menu bar 1\n' +
-                        '    delay 1.2\n' +
+                        '    delay 1.5\n' +
                         '    key code 36\n' +
                         '    delay 0.5\n' +
                         '  end tell\n' +
@@ -3063,7 +3064,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                             'var _at=sq.audioTracks[_tr];' +
                             'if(!_at||_at.clips.numItems===0)return "no-clip:"+sq.name;' +
                             '_at.clips[0].selected=true;' +
-                            'return "ok:"+sq.name;' +
+                            'return "ok:"+sq.name+"~sel:"+_at.clips[0].selected;' +
                         '}' +
                         'return "not-found";' +
                         '})();';
@@ -3076,16 +3077,31 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                             return;
                         }
 
-                        lwLog('[TEST 1 seq] Clip selected in <b>' + _ch.name + '</b>. Waiting 1s then pasting...');
+                        lwLog('[TEST 1 seq] Clip selected. Waiting 1s for Timeline to settle...');
                         _cp.execSync('sleep 1.0');
 
-                        try {
-                            _cp.execSync('osascript /tmp/pp_paste_attrs.scpt', { timeout: 12000 });
-                            lwLog('[TEST 1 seq] <b>Done!</b> Paste Attributes sent to <b>' + _ch.name + '</b>.<br>Check Effect Controls to verify dxRevive was applied.');
-                        } catch(_pe) {
-                            lwLog('[TEST 1 seq] Paste error: ' + String(_pe.message || _pe).slice(0, 200));
-                        }
-                        lwBtnPluginDxTest.disabled = false;
+                        // Verify selection is still active right before paste
+                        var _jsxPreCheck =
+                            '(function(){' +
+                            'var sq=app.project.activeSequence;' +
+                            'if(!sq)return "no-active-seq";' +
+                            'var at=sq.audioTracks[' + _tr0 + '];' +
+                            'if(!at||at.clips.numItems===0)return "no-clip";' +
+                            'return "pre-paste~seq:"+sq.name+"~sel:"+at.clips[0].selected;' +
+                            '})();';
+
+                        window.__adobe_cep__.evalScript(_jsxPreCheck, function(_preCheck) {
+                            lwLog('[TEST 1 seq] Pre-paste check: <b>' + (_preCheck || 'empty') + '</b>');
+                            lwLog('[TEST 1 seq] Triggering Paste Attributes...');
+
+                            try {
+                                _cp.execSync('osascript /tmp/pp_paste_attrs.scpt', { timeout: 12000 });
+                                lwLog('[TEST 1 seq] <b>osascript completed.</b> Check Effect Controls on <b>' + _ch.name + '</b> — if dxRevive appears, it worked!');
+                            } catch(_pe) {
+                                lwLog('[TEST 1 seq] Paste error: ' + String(_pe.message || _pe).slice(0, 200));
+                            }
+                            lwBtnPluginDxTest.disabled = false;
+                        });
                     });
                 });
             });
