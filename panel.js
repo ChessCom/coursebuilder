@@ -1,10 +1,10 @@
-/* Course Builder Panel v129 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v130 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v129</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v130</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -151,7 +151,10 @@ document.getElementById('app').innerHTML = [
     '    <button class="btn-small" id="lwBtnPluginPreset" style="flex-shrink:0">Plugin preset...</button>',
     '    <div class="lu-info" id="lwPluginPresetInfo" style="margin:0;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">&mdash;</div>',
     '  </div>',
-    '  <button class="btn-small" id="lwBtnPluginDx" style="width:100%;margin-top:4px">&#127900; Apply Plugin dx</button>',
+    '  <div style="display:flex;gap:4px;margin-top:4px">',
+    '    <button class="btn-small" id="lwBtnPluginDx" style="flex:1">&#127900; Apply Plugin dx</button>',
+    '    <button class="btn-small" id="lwBtnPluginDxTest" style="flex:0 0 auto;font-size:10px">&#128270; 1 seq</button>',
+    '  </div>',
     '  <div style="display:flex;align-items:center;gap:6px;margin-top:6px;margin-bottom:4px">',
     '    <button class="btn-small" id="lwBtnDir" style="flex-shrink:0">Folder...</button>',
     '    <div class="lu-info" id="lwDirInfo" style="margin:0;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">&mdash;</div>',
@@ -2862,8 +2865,8 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                                 return;
                             }
 
-                            // Small pause so PP finishes opening the sequence before pasting
-                            _cp.execSync('sleep 0.3');
+                            // Wait for PP to finish loading the sequence in the Timeline
+                            _cp.execSync('sleep 1.0');
 
                             try {
                                 _cp.execSync('osascript /tmp/pp_paste_attrs.scpt', { timeout: 12000 });
@@ -2878,6 +2881,212 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     }
 
                     _next(0);
+                });
+            });
+        });
+    }
+
+    // ── Plugin dx — test on 1 seq ────────────────────────────────────────────
+    var lwBtnPluginDxTest = document.getElementById('lwBtnPluginDxTest');
+    if (lwBtnPluginDxTest) {
+        lwBtnPluginDxTest.addEventListener('click', function () {
+            lwBtnPluginDxTest.disabled = true;
+            lwLog('[TEST 1 seq] Scanning test sequence for 3rd-party plugins...');
+
+            // Same Phase 1 JSX as Apply Plugin dx
+            var jsx1 =
+                '(function(){' +
+                'var _out=[];' +
+                'try{' +
+                    'var _testSeq=null;' +
+                    'for(var si=0;si<app.project.sequences.numSequences;si++){var ts=app.project.sequences[si];if(ts&&ts.name&&ts.name.toLowerCase()==="test"){_testSeq=ts;break;}}' +
+                    'if(!_testSeq)return "ERR:no-test-seq";' +
+                    'for(var ti=0;ti<_testSeq.audioTracks.numTracks;ti++){' +
+                        'var at=_testSeq.audioTracks[ti];' +
+                        'if(!at||at.clips.numItems===0)continue;' +
+                        'var ac=at.clips[0];' +
+                        'for(var ci=0;ci<ac.components.numItems;ci++){' +
+                            'var co=ac.components[ci];' +
+                            'var mn="";try{mn=co.matchName||"";}catch(e){}' +
+                            'var isBuiltin=(co.displayName==="Volume"||co.displayName==="Channel Volume"||co.displayName==="Panner");' +
+                            'if(!isBuiltin)_out.push("PLUG:"+co.displayName+"~"+mn+"~"+ti);' +
+                        '}' +
+                    '}' +
+                '}catch(e){return "ERR:"+e.message;}' +
+                'return _out.length?_out.join("|"):"NONE";' +
+                '})();';
+
+            window.__adobe_cep__.evalScript(jsx1, function (res1) {
+                if (!res1 || res1 === 'EvalScript error.' || res1.indexOf('ERR:') === 0) {
+                    lwLog('[TEST 1 seq] Scan failed: ' + res1);
+                    lwBtnPluginDxTest.disabled = false;
+                    return;
+                }
+
+                var plugins = [];
+                var parts = res1.split('|');
+                for (var pi = 0; pi < parts.length; pi++) {
+                    var p = parts[pi];
+                    if (p.indexOf('PLUG:') === 0) {
+                        var t = p.slice(5).split('~');
+                        plugins.push({ name: t[0], matchName: t[1] || '', trackIdx: parseInt(t[2], 10) || 0 });
+                    }
+                }
+
+                if (!plugins.length) {
+                    lwLog('[TEST 1 seq] No 3rd-party plugins found in test sequence. Apply dxRevive to the first clip on A1 in the "test" sequence first.');
+                    lwBtnPluginDxTest.disabled = false;
+                    return;
+                }
+
+                var names = plugins.map(function(p){ return p.name+'@A'+p.trackIdx; });
+                lwLog('[TEST 1 seq] Found: ' + names.join(', ') + '<br>Building chapter list...');
+
+                var _tr0 = plugins[0].trackIdx;
+                var _plugName0 = plugins[0].name;
+
+                var jsx2a =
+                    '(function(){' +
+                    'var _tr=' + _tr0 + ';' +
+                    'var _pn=' + JSON.stringify(_plugName0) + ';' +
+                    'var _out=[];' +
+                    'try{' +
+                        'var _seen={};' +
+                        'function _skip(n){var nl=n.toLowerCase();return nl==="test"||nl.indexOf("test")===0||nl.indexOf("nested sequence")===0||n.indexOf("PREVIEW")>=0;}' +
+                        'function _hasPlug(sq){try{var at=sq.audioTracks[_tr];if(!at||at.clips.numItems===0)return false;var ac=at.clips[0];for(var i=0;i<ac.components.numItems;i++){if(ac.components[i].displayName===_pn)return true;}}catch(e){}return false;}' +
+                        'for(var si=0;si<app.project.sequences.numSequences;si++){' +
+                            'var sq=app.project.sequences[si];' +
+                            'if(!sq||!sq.name||!sq.sequenceID)continue;' +
+                            'if(_skip(sq.name))continue;' +
+                            'if(_seen[sq.sequenceID])continue;' +
+                            '_seen[sq.sequenceID]=1;' +
+                            '_out.push((_hasPlug(sq)?"DONE":"SEQ")+":"+sq.sequenceID+"~"+sq.name);' +
+                        '}' +
+                        'var _testSeq=null;' +
+                        'for(var ti=0;ti<app.project.sequences.numSequences;ti++){var ts=app.project.sequences[ti];if(ts&&ts.name&&ts.name.toLowerCase()==="test"){_testSeq=ts;break;}}' +
+                        'if(!_testSeq)return "ERR:no-test-seq";' +
+                        'try{app.project.openSequence(_testSeq.sequenceID);}catch(e){}' +
+                        'app.project.activeSequence=_testSeq;' +
+                        'var _tat=_testSeq.audioTracks[_tr];' +
+                        'if(!_tat||_tat.clips.numItems===0)return "ERR:no-clip-in-test";' +
+                        '_tat.clips[0].selected=true;' +
+                        '_out.push("src:ok");' +
+                    '}catch(e){return "ERR:"+e.message;}' +
+                    'return _out.join("|");' +
+                    '})();';
+
+                window.__adobe_cep__.evalScript(jsx2a, function(res2a) {
+                    if (!res2a || res2a === 'EvalScript error.' || res2a.indexOf('ERR:') === 0) {
+                        lwLog('[TEST 1 seq] Phase 2a failed: ' + res2a);
+                        lwBtnPluginDxTest.disabled = false;
+                        return;
+                    }
+
+                    var _allChapters = [], _alreadyDone = 0;
+                    var _p2parts = res2a.split('|');
+                    for (var _p2i = 0; _p2i < _p2parts.length; _p2i++) {
+                        var _p2 = _p2parts[_p2i];
+                        if (_p2.indexOf('SEQ:') === 0) {
+                            var _t2 = _p2.slice(4).split('~');
+                            _allChapters.push({ id: _t2[0], name: _t2.slice(1).join('~') });
+                        } else if (_p2.indexOf('DONE:') === 0) {
+                            _alreadyDone++;
+                        }
+                    }
+
+                    // Only process the FIRST chapter
+                    var _chapters = _allChapters.slice(0, 1);
+
+                    if (!_chapters.length) {
+                        lwLog('[TEST 1 seq] No chapters to process (' + _alreadyDone + ' already done, ' + _allChapters.length + ' total).');
+                        lwBtnPluginDxTest.disabled = false;
+                        return;
+                    }
+
+                    lwLog('[TEST 1 seq] Test clip selected. Will process 1 of ' + _allChapters.length + ' chapters: <b>' + _chapters[0].name + '</b><br>Copying...');
+
+                    var _cp = require('child_process');
+                    var _fs = require('fs');
+
+                    _fs.writeFileSync('/tmp/pp_copy_clip.scpt',
+                        'tell application "Adobe Premiere Pro 2025" to activate\n' +
+                        'delay 0.5\n' +
+                        'tell application "System Events"\n' +
+                        '  tell process "Adobe Premiere Pro 2025"\n' +
+                        '    click menu bar item "Edit" of menu bar 1\n' +
+                        '    delay 0.3\n' +
+                        '    click menu item "Copy" of menu 1 of menu bar item "Edit" of menu bar 1\n' +
+                        '  end tell\n' +
+                        'end tell\n'
+                    );
+
+                    try {
+                        _cp.execSync('osascript /tmp/pp_copy_clip.scpt', { timeout: 6000 });
+                    } catch(_ce) {
+                        var _cerr = String(_ce.message || _ce);
+                        var _needsPerms = _cerr.indexOf('1002') >= 0 || _cerr.indexOf('-1743') >= 0 || _cerr.indexOf('keystroke') >= 0 || _cerr.indexOf('authorized') >= 0;
+                        if (_needsPerms) {
+                            lwLog('<b>&#9888; Permiso requerido:</b> ve a Configuración del Sistema &rsaquo; Privacidad y Seguridad &rsaquo; Accesibilidad y añade Adobe Premiere Pro 2025.<br><small>(' + _cerr.slice(0, 120) + ')</small>');
+                        } else {
+                            lwLog('[TEST 1 seq] Copy failed: ' + _cerr.slice(0, 200));
+                        }
+                        lwBtnPluginDxTest.disabled = false;
+                        return;
+                    }
+                    lwLog('[TEST 1 seq] Copied! Now opening chapter: <b>' + _chapters[0].name + '</b>');
+                    _cp.execSync('sleep 0.5');
+
+                    _fs.writeFileSync('/tmp/pp_paste_attrs.scpt',
+                        'tell application "System Events"\n' +
+                        '  tell process "Adobe Premiere Pro 2025"\n' +
+                        '    click menu bar item "Edit" of menu bar 1\n' +
+                        '    delay 0.3\n' +
+                        '    click menu item "Paste Attributes..." of menu 1 of menu bar item "Edit" of menu bar 1\n' +
+                        '    delay 1.2\n' +
+                        '    key code 36\n' +
+                        '    delay 0.5\n' +
+                        '  end tell\n' +
+                        'end tell\n'
+                    );
+
+                    var _ch = _chapters[0];
+                    var _jsxSel =
+                        '(function(){' +
+                        'var _id=' + JSON.stringify(_ch.id) + ';' +
+                        'var _tr=' + _tr0 + ';' +
+                        'for(var si=0;si<app.project.sequences.numSequences;si++){' +
+                            'var sq=app.project.sequences[si];' +
+                            'if(!sq)continue;' +
+                            'try{if(sq.sequenceID!==_id)continue;}catch(e){continue;}' +
+                            'try{app.project.openSequence(sq.sequenceID);}catch(e){}' +
+                            'app.project.activeSequence=sq;' +
+                            'var _at=sq.audioTracks[_tr];' +
+                            'if(!_at||_at.clips.numItems===0)return "no-clip:"+sq.name;' +
+                            '_at.clips[0].selected=true;' +
+                            'return "ok:"+sq.name;' +
+                        '}' +
+                        'return "not-found";' +
+                        '})();';
+
+                    window.__adobe_cep__.evalScript(_jsxSel, function(_resSel) {
+                        lwLog('[TEST 1 seq] JSX select result: <b>' + (_resSel || 'empty') + '</b>');
+                        if (!_resSel || _resSel.indexOf('ok:') !== 0) {
+                            lwLog('[TEST 1 seq] Could not select clip in chapter sequence. Aborting.');
+                            lwBtnPluginDxTest.disabled = false;
+                            return;
+                        }
+
+                        lwLog('[TEST 1 seq] Clip selected in <b>' + _ch.name + '</b>. Waiting 1s then pasting...');
+                        _cp.execSync('sleep 1.0');
+
+                        try {
+                            _cp.execSync('osascript /tmp/pp_paste_attrs.scpt', { timeout: 12000 });
+                            lwLog('[TEST 1 seq] <b>Done!</b> Paste Attributes sent to <b>' + _ch.name + '</b>.<br>Check Effect Controls to verify dxRevive was applied.');
+                        } catch(_pe) {
+                            lwLog('[TEST 1 seq] Paste error: ' + String(_pe.message || _pe).slice(0, 200));
+                        }
+                        lwBtnPluginDxTest.disabled = false;
+                    });
                 });
             });
         });
