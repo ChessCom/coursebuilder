@@ -2713,12 +2713,28 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     'var _OUT=[];' +
                     'function _skip(n){var nl=n.toLowerCase();return nl==="test"||nl.indexOf("test")===0||nl.indexOf("nested sequence")===0||n.indexOf("PREVIEW")>=0;}' +
                     'function _hasComp(clip,nm){try{for(var i=0;i<clip.components.numItems;i++){if(clip.components[i].displayName===nm)return true;}}catch(e){}return false;}' +
-                    // Enable QE and probe available methods once
                     'app.enableQE();' +
-                    'var _qeHasAudio=(typeof qe.getAudioEffectByMatchName==="function");' +
-                    'var _qeHasVideo=(typeof qe.getVideoEffectByMatchName==="function");' +
-                    '_OUT.push("QE-probe:getAudioEffect="+_qeHasAudio+" getVideoEffect="+_qeHasVideo);' +
                     'var _origSeq=app.project.activeSequence;' +
+                    // One-time probe: find what QE audio track clip method works using the test seq
+                    'var _clipMethod="";' +
+                    'try{' +
+                        'var _tseq=null;' +
+                        'for(var _ti2=0;_ti2<app.project.sequences.numSequences;_ti2++){var _ts=app.project.sequences[_ti2];if(_ts&&_ts.name.toLowerCase()==="test"){_tseq=_ts;break;}}' +
+                        'if(_tseq){' +
+                            'app.project.activeSequence=_tseq;' +
+                            'var _tqSeq=qe.project.getActiveSequence();' +
+                            'if(_tqSeq){' +
+                                'var _tqAT=_tqSeq.getAudioTrackAt(0);' +
+                                'if(_tqAT){' +
+                                    'var _candidates=["getVideoClipAt","getAudioClipAt","getItemAt","getClipAt"];' +
+                                    'for(var _ck=0;_ck<_candidates.length;_ck++){' +
+                                        'if(typeof _tqAT[_candidates[_ck]]==="function"){_clipMethod=_candidates[_ck];break;}' +
+                                    '}' +
+                                '}' +
+                            '}' +
+                        '}' +
+                    '}catch(probe_e){_OUT.push("probe-err:"+probe_e.message);}' +
+                    '_OUT.push("clip-method:"+(_clipMethod||"NONE"));' +
                     'for(var _si=0;_si<app.project.sequences.numSequences;_si++){' +
                         'try{' +
                             'var _seq=app.project.sequences[_si];' +
@@ -2739,7 +2755,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                                 'if(_log.length)_OUT.push(_seq.name+": "+_log.join(" "));' +
                                 'continue;' +
                             '}' +
-                            // Make this sequence active, get via QE
+                            'if(!_clipMethod){_log.push("no-clip-method");_OUT.push(_seq.name+": "+_log.join(" "));continue;}' +
                             'try{' +
                                 'app.project.activeSequence=_seq;' +
                                 'var _qeSeq=qe.project.getActiveSequence();' +
@@ -2747,37 +2763,22 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                                     'for(var _mi=0;_mi<_missing.length;_mi++){' +
                                         'var _mp=_missing[_mi];' +
                                         'var _added=false;' +
-                                        // Method A: qe.getAudioEffectByMatchName → addAudioEffect
-                                        'if(!_added&&_qeHasAudio){' +
-                                            'try{' +
-                                                'var _eff=qe.getAudioEffectByMatchName(_mp.matchName);' +
-                                                'if(_eff){' +
-                                                    'var _qeAT=_qeSeq.getAudioTrackAt(_mp.trackIdx);' +
-                                                    'var _qeAC=_qeAT?_qeAT.getClipAt(0):null;' +
-                                                    'if(_qeAC){_qeAC.addAudioEffect(_eff);_added=true;_log.push("+A:"+_mp.name);}' +
-                                                    'else{_log.push("no-clip-A:"+_mp.name);}' +
-                                                '}else{_log.push("no-eff-obj:"+_mp.name);}' +
-                                            '}catch(eA){_log.push("methA-err:"+_mp.name+":"+eA.message);}' +
-                                        '}' +
-                                        // Method B: qe.getVideoEffectByMatchName → addAudioEffect (some effects work either way)
-                                        'if(!_added&&_qeHasVideo){' +
-                                            'try{' +
-                                                'var _effV=qe.getVideoEffectByMatchName(_mp.matchName);' +
-                                                'if(_effV){' +
-                                                    'var _qeAT2=_qeSeq.getAudioTrackAt(_mp.trackIdx);' +
-                                                    'var _qeAC2=_qeAT2?_qeAT2.getClipAt(0):null;' +
-                                                    'if(_qeAC2){_qeAC2.addAudioEffect(_effV);_added=true;_log.push("+V:"+_mp.name);}' +
-                                                '}' +
-                                            '}catch(eB){_log.push("methB-err:"+_mp.name+":"+eB.message);}' +
-                                        '}' +
-                                        // Method C: direct qeClip.addEffect(matchName) string
-                                        'if(!_added){' +
-                                            'try{' +
-                                                'var _qeAT3=_qeSeq.getAudioTrackAt(_mp.trackIdx);' +
-                                                'var _qeAC3=_qeAT3?_qeAT3.getClipAt(0):null;' +
-                                                'if(_qeAC3){_qeAC3.addEffect(_mp.matchName);_added=true;_log.push("+C:"+_mp.name);}' +
-                                            '}catch(eC){_log.push("methC-err:"+_mp.name+":"+eC.message);}' +
-                                        '}' +
+                                        'try{' +
+                                            'var _qeAT=_qeSeq.getAudioTrackAt(_mp.trackIdx);' +
+                                            'if(_qeAT){' +
+                                                'var _qeAC=_qeAT[_clipMethod](0);' +
+                                                'if(_qeAC){' +
+                                                    // Try each add method
+                                                    'var _addMethods=["addEffect","addAudioEffect","addVideoEffect"];' +
+                                                    'for(var _am=0;_am<_addMethods.length;_am++){' +
+                                                        'if(typeof _qeAC[_addMethods[_am]]==="function"){' +
+                                                            'try{_qeAC[_addMethods[_am]](_mp.matchName);_added=true;_log.push("+"+_addMethods[_am]+":"+_mp.name);break;}' +
+                                                            'catch(eAdd){_log.push(_addMethods[_am]+"-err:"+eAdd.message);}' +
+                                                        '}' +
+                                                    '}' +
+                                                '}else{_log.push("null-clip:"+_mp.name);}' +
+                                            '}else{_log.push("null-qeAT:"+_mp.name);}' +
+                                        '}catch(eQE){_log.push("qe-err:"+_mp.name+":"+eQE.message);}' +
                                         'if(!_added)_log.push("FAILED:"+_mp.name);' +
                                     '}' +
                                 '}' +
