@@ -2639,42 +2639,36 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
     if (lwBtnPluginDx) {
         lwBtnPluginDx.addEventListener('click', function () {
             lwBtnPluginDx.disabled = true;
-            lwLog('Reading audio plugins from test...');
+            lwLog('Scanning "test" sequence for audio plugins...');
 
-            // Phase 1: scan clip-level AND track-level components from active sequence
-            // Output tokens separated by |:
-            //   "TRACK:N"        — start of audio track N
-            //   "TRK:name~mn"    — track-level component
-            //   "CLIP:name~mn"   — clip-level component
-            //   "ERR:msg"        — error
+            // Phase 1: scan clip.components on sequence named "test" (not the active sequence)
+            // Output: "PLUG:name~matchName~trackIdx" per 3rd-party component found
             var jsx1 =
                 '(function(){' +
                 'var out=[];' +
                 'try{' +
-                    'var sq=app.project.activeSequence;' +
-                    'if(!sq)return "ERR:no active sequence";' +
+                    // Find the sequence named exactly "test" (case-insensitive)
+                    'var sq=null;' +
+                    'for(var si=0;si<app.project.sequences.numSequences;si++){' +
+                        'var s=app.project.sequences[si];' +
+                        'if(s&&s.name&&s.name.toLowerCase()==="test"){sq=s;break;}' +
+                    '}' +
+                    'if(!sq)return "ERR:no sequence named test";' +
+                    'out.push("seq:"+sq.name);' +
+                    'var builtIn={};' +
+                    'builtIn["Volume"]=1;builtIn["Channel Volume"]=1;builtIn["Panner"]=1;' +
+                    'function isBuiltIn(n){return !!builtIn[n]||n.indexOf("Internal")===0;}' +
                     'for(var ai=0;ai<sq.audioTracks.numTracks;ai++){' +
                         'var at=sq.audioTracks[ai];' +
-                        'var nClips=at.clips.numItems;' +
-                        'out.push("TRACK:"+ai);' +
-                        // track-level components
-                        'try{if(at.components&&at.components.numItems>0){' +
-                            'for(var ti=0;ti<at.components.numItems;ti++){' +
-                                'var tc=at.components[ti];' +
-                                'var tnm="?";try{tnm=String(tc.displayName);}catch(e){}' +
-                                'var tmn="";try{tmn=String(tc.matchName||"");}catch(e){}' +
-                                'out.push("TRK:"+tnm+"~"+tmn);' +
+                        'if(at.clips.numItems===0)continue;' +
+                        'var ac=at.clips[0];if(!ac)continue;' +
+                        'for(var ci=0;ci<ac.components.numItems;ci++){' +
+                            'var co=ac.components[ci];' +
+                            'var nm="?";try{nm=String(co.displayName);}catch(e){}' +
+                            'var mn="";try{mn=String(co.matchName||"");}catch(e){}' +
+                            'if(!isBuiltIn(nm)&&mn){' +
+                                'out.push("PLUG:"+nm+"~"+mn+"~"+ai);' +
                             '}' +
-                        '}}catch(e){out.push("TRK-ERR:"+e.message);}' +
-                        // clip-level components (first clip)
-                        'if(nClips>0){' +
-                            'var ac=at.clips[0];if(!ac)ac=at.clips[1];' +
-                            'if(ac){try{for(var ci=0;ci<ac.components.numItems;ci++){' +
-                                'var co=ac.components[ci];' +
-                                'var nm="?";try{nm=String(co.displayName);}catch(e){}' +
-                                'var mn="";try{mn=String(co.matchName||"");}catch(e){}' +
-                                'out.push("CLIP:"+nm+"~"+mn);' +
-                            '}}catch(e){out.push("CLIP-ERR:"+e.message);}}' +
                         '}' +
                     '}' +
                 '}catch(e){out.push("ERR:"+e.message);}' +
@@ -2683,99 +2677,76 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
             window.__adobe_cep__.evalScript(jsx1, function (res1) {
                 if (!res1 || res1 === 'EvalScript error.' || res1.indexOf('ERR:') === 0) {
-                    lwLog('Phase 1 failed: ' + res1);
+                    lwLog('Scan failed: ' + res1);
                     lwBtnPluginDx.disabled = false;
                     return;
                 }
 
-                // Parse: build per-track lists of clip-level and track-level comps
-                // clipTracks[idx] = [{ name, matchName }]
-                // trkTracks[idx]  = [{ name, matchName }]
-                var clipTracks = {};
-                var trkTracks = {};
-                var curIdx = -1;
+                // Parse PLUG: entries
+                var plugins = []; // { name, matchName, trackIdx }
                 var parts = res1.split('|');
                 for (var pi = 0; pi < parts.length; pi++) {
                     var p = parts[pi];
-                    if (p.indexOf('TRACK:') === 0) {
-                        curIdx = parseInt(p.slice(6), 10);
-                        if (!clipTracks[curIdx]) clipTracks[curIdx] = [];
-                        if (!trkTracks[curIdx]) trkTracks[curIdx] = [];
-                    } else if (curIdx >= 0 && p.indexOf('TRK:') === 0) {
-                        var tilde = p.slice(4).split('~');
-                        trkTracks[curIdx].push({ name: tilde[0], matchName: tilde[1] || '' });
-                    } else if (curIdx >= 0 && p.indexOf('CLIP:') === 0) {
-                        var tilde2 = p.slice(5).split('~');
-                        clipTracks[curIdx].push({ name: tilde2[0], matchName: tilde2[1] || '' });
+                    if (p.indexOf('PLUG:') === 0) {
+                        var t = p.slice(5).split('~');
+                        plugins.push({ name: t[0], matchName: t[1] || '', trackIdx: parseInt(t[2], 10) || 0 });
                     }
                 }
 
-                // Collect 3rd-party comps (skip built-in audio effects)
-                var builtIn = ['Internal Volume Stereo', 'Internal Channel Volume Stereo', 'Volume', 'Channel Volume', 'Panner'];
-                function isBuiltIn(nm) { for (var i=0;i<builtIn.length;i++) if (nm===builtIn[i]||nm.indexOf('Internal')===0) return true; return false; }
-
-                var trkPlugins = []; // { idx, name, matchName }
-                var clipPlugins = [];
-                Object.keys(trkTracks).forEach(function(idx) {
-                    trkTracks[idx].forEach(function(c) { if (c.matchName && !isBuiltIn(c.name)) trkPlugins.push({ idx: parseInt(idx,10), name: c.name, matchName: c.matchName }); });
-                });
-                Object.keys(clipTracks).forEach(function(idx) {
-                    clipTracks[idx].forEach(function(c) { if (c.matchName && !isBuiltIn(c.name)) clipPlugins.push({ idx: parseInt(idx,10), name: c.name, matchName: c.matchName }); });
-                });
-
-                // Show diagnostic
-                var diagLines = [];
-                Object.keys(trkTracks).forEach(function(idx) {
-                    var tl = trkTracks[idx].map(function(c){return 'TRK:'+c.name;});
-                    var cl = clipTracks[idx].map(function(c){return 'CLIP:'+c.name;});
-                    if (tl.length||cl.length) diagLines.push('A'+idx+': '+tl.concat(cl).join(', '));
-                });
-                lwLog('Scan: ' + (diagLines.join(' | ') || '(empty)'));
-
-                if (!trkPlugins.length && !clipPlugins.length) {
-                    lwLog('No 3rd-party plugins found in test sequence. Add dxRevive to the test sequence audio first.');
+                if (!plugins.length) {
+                    lwLog('No 3rd-party plugins found in test sequence. Apply dxRevive to the first clip on A1 in the "test" sequence, then try again.');
                     lwBtnPluginDx.disabled = false;
                     return;
                 }
 
-                var found = trkPlugins.concat(clipPlugins).map(function(c){ return c.name+'@A'+c.idx+(c.matchName?'('+c.matchName+')':''); });
-                lwLog('Found plugins: ' + found.join(', ') + '<br>Applying to all chapters...');
+                var names = plugins.map(function(p){ return p.name+'@A'+p.trackIdx; });
+                lwLog('Found: ' + names.join(', ') + '<br>Applying to all chapters...');
 
-                // Phase 2: add missing track-level and clip-level effects to all chapter sequences
-                var trkData = JSON.stringify(trkPlugins);
-                var clipData = JSON.stringify(clipPlugins);
+                // Phase 2: add effects to clips in all chapter sequences via QE API
+                // Regular clip.addEffect() does NOT work for audio in PP25 — use QE
+                var plugData = JSON.stringify(plugins);
                 var jsx2 =
                     '(function(){' +
+                    'var _plugins='+plugData+';' +
                     'var _OUT=[];' +
-                    'var _trkPlugins='+trkData+';' +
-                    'var _clipPlugins='+clipData+';' +
                     'function _skip(n){var nl=n.toLowerCase();return nl==="test"||nl.indexOf("test")===0||nl.indexOf("nested sequence")===0||n.indexOf("PREVIEW")>=0;}' +
-                    'function _hasComp(obj,nm){try{for(var i=0;i<obj.components.numItems;i++){if(obj.components[i].displayName===nm)return true;}}catch(e){}return false;}' +
+                    'function _hasComp(clip,nm){try{for(var i=0;i<clip.components.numItems;i++){if(clip.components[i].displayName===nm)return true;}}catch(e){}return false;}' +
+                    // Try QE API for adding audio effects
+                    'var _useQE=false;' +
+                    'try{app.enableQE();_useQE=true;}catch(e){}' +
                     'for(var _si=0;_si<app.project.sequences.numSequences;_si++){' +
                         'try{' +
                             'var _seq=app.project.sequences[_si];' +
                             'if(!_seq||_skip(_seq.name))continue;' +
                             'var _log=[];' +
-                            // track-level effects
-                            'for(var _ti=0;_ti<_trkPlugins.length;_ti++){' +
-                                'var _tp=_trkPlugins[_ti];' +
-                                'try{var _atrk=_seq.audioTracks[_tp.idx];if(!_atrk)continue;' +
-                                    'if(!_hasComp(_atrk,_tp.name)){' +
-                                        'try{_atrk.addEffect(_tp.matchName);_log.push("TRK+"+_tp.name);}' +
-                                        'catch(e){_log.push("TRK-FAIL:"+_tp.name+":"+e.message);}' +
-                                    '}else{_log.push("TRK-ok:"+_tp.name);}' +
-                                '}catch(e){_log.push("TRK-ERR:"+e.message);}' +
-                            '}' +
-                            // clip-level effects
-                            'for(var _ci=0;_ci<_clipPlugins.length;_ci++){' +
-                                'var _cp=_clipPlugins[_ci];' +
-                                'try{var _atrk2=_seq.audioTracks[_cp.idx];if(!_atrk2||_atrk2.clips.numItems===0)continue;' +
-                                    'var _ac=_atrk2.clips[0];if(!_ac)continue;' +
-                                    'if(!_hasComp(_ac,_cp.name)){' +
-                                        'try{_ac.addEffect(_cp.matchName);_log.push("CLIP+"+_cp.name);}' +
-                                        'catch(e){_log.push("CLIP-FAIL:"+_cp.name+":"+e.message);}' +
-                                    '}else{_log.push("CLIP-ok:"+_cp.name);}' +
-                                '}catch(e){_log.push("CLIP-ERR:"+e.message);}' +
+                            'for(var _pi=0;_pi<_plugins.length;_pi++){' +
+                                'var _p=_plugins[_pi];' +
+                                'try{' +
+                                    'var _atrk=_seq.audioTracks[_p.trackIdx];' +
+                                    'if(!_atrk||_atrk.clips.numItems===0)continue;' +
+                                    'var _ac=_atrk.clips[0];if(!_ac)continue;' +
+                                    'if(_hasComp(_ac,_p.name)){_log.push("ok:"+_p.name);continue;}' +
+                                    // Try clip.addEffect first (may work in some PP versions)
+                                    'var _added=false;' +
+                                    'try{_ac.addEffect(_p.matchName);_added=true;_log.push("+"+_p.name);}catch(e){' +
+                                        // Fall back to QE addEffect
+                                        'if(_useQE){' +
+                                            'try{' +
+                                                'var _qeSeq=qe.project.getSequenceByID(_seq.sequenceID);' +
+                                                'if(_qeSeq){' +
+                                                    'var _qeAT=_qeSeq.getAudioTrackAt(_p.trackIdx);' +
+                                                    'if(_qeAT){' +
+                                                        'var _qeAC=_qeAT.getClipAt(0);' +
+                                                        'if(_qeAC){' +
+                                                            'var _r=_qeAC.addEffect(_p.matchName);' +
+                                                            '_added=true;_log.push("QE+"+_p.name+"="+String(_r));' +
+                                                        '}' +
+                                                    '}' +
+                                                '}' +
+                                            '}catch(qe_e){_log.push("QE-fail:"+_p.name+":"+qe_e.message);}' +
+                                        '} else {_log.push("no-add-api:"+_p.name);}' +
+                                    '}' +
+                                '}catch(e2){_log.push("err:"+e2.message);}' +
                             '}' +
                             'if(_log.length)_OUT.push(_seq.name+": "+_log.join(" "));' +
                         '}catch(e){_OUT.push("seq-err:"+e.message);}' +
