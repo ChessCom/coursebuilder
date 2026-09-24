@@ -1,10 +1,10 @@
-/* Course Builder Panel v125 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v127 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v125</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v127</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2700,104 +2700,172 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 }
 
                 var names = plugins.map(function(p){ return p.name+'@A'+p.trackIdx; });
-                lwLog('Found: ' + names.join(', ') + '<br>Applying to all chapters...');
+                lwLog('Found: ' + names.join(', ') + '<br>Building chapter list...');
 
-                // Phase 2: add missing effects via QE API
-                // clip.addEffect() not available for audio TrackItems in PP25
-                // QE approach: set app.project.activeSequence = seq, then use getActiveSequence()
-                // Effect add: qe.getAudioEffectByMatchName(mn) → qeClip.addAudioEffect(effect)
-                var plugData = JSON.stringify(plugins);
-                var jsx2 =
+                // Phase 2: Clipboard approach — Copy test clip, Paste Attributes to each chapter
+                // PP25 has no API to add 3rd-party audio effects programmatically;
+                // clipboard + osascript keyboard simulation is the only working path.
+                var _tr0 = plugins[0].trackIdx;
+                var _plugName0 = plugins[0].name;
+
+                // 2a: enumerate chapter sequences + activate test seq + select source clip
+                var jsx2a =
                     '(function(){' +
-                    'var _plugins='+plugData+';' +
-                    'var _OUT=[];' +
-                    'function _skip(n){var nl=n.toLowerCase();return nl==="test"||nl.indexOf("test")===0||nl.indexOf("nested sequence")===0||n.indexOf("PREVIEW")>=0;}' +
-                    'function _hasComp(clip,nm){try{for(var i=0;i<clip.components.numItems;i++){if(clip.components[i].displayName===nm)return true;}}catch(e){}return false;}' +
-                    'app.enableQE();' +
-                    'var _origSeq=app.project.activeSequence;' +
-                    // One-time probe: find what QE audio track clip method works using the test seq
-                    'var _clipMethod="";' +
+                    'var _tr=' + _tr0 + ';' +
+                    'var _pn=' + JSON.stringify(_plugName0) + ';' +
+                    'var _out=[];' +
                     'try{' +
-                        'var _tseq=null;' +
-                        'for(var _ti2=0;_ti2<app.project.sequences.numSequences;_ti2++){var _ts=app.project.sequences[_ti2];if(_ts&&_ts.name.toLowerCase()==="test"){_tseq=_ts;break;}}' +
-                        'if(_tseq){' +
-                            'app.project.activeSequence=_tseq;' +
-                            'var _tqSeq=qe.project.getActiveSequence();' +
-                            'if(_tqSeq){' +
-                                'var _tqAT=_tqSeq.getAudioTrackAt(0);' +
-                                'if(_tqAT){' +
-                                    'var _candidates=["getVideoClipAt","getAudioClipAt","getItemAt","getClipAt"];' +
-                                    'for(var _ck=0;_ck<_candidates.length;_ck++){' +
-                                        'if(typeof _tqAT[_candidates[_ck]]==="function"){_clipMethod=_candidates[_ck];break;}' +
-                                    '}' +
-                                '}' +
-                            '}' +
+                        'var _seen={};' +
+                        'function _skip(n){var nl=n.toLowerCase();return nl==="test"||nl.indexOf("test")===0||nl.indexOf("nested sequence")===0||n.indexOf("PREVIEW")>=0;}' +
+                        'function _hasPlug(sq){try{var at=sq.audioTracks[_tr];if(!at||at.clips.numItems===0)return false;var ac=at.clips[0];for(var i=0;i<ac.components.numItems;i++){if(ac.components[i].displayName===_pn)return true;}}catch(e){}return false;}' +
+                        'for(var si=0;si<app.project.sequences.numSequences;si++){' +
+                            'var sq=app.project.sequences[si];' +
+                            'if(!sq||!sq.name||!sq.sequenceID)continue;' +
+                            'if(_skip(sq.name))continue;' +
+                            'if(_seen[sq.sequenceID])continue;' +
+                            '_seen[sq.sequenceID]=1;' +
+                            '_out.push((_hasPlug(sq)?"DONE":"SEQ")+":"+sq.sequenceID+"~"+sq.name);' +
                         '}' +
-                    '}catch(probe_e){_OUT.push("probe-err:"+probe_e.message);}' +
-                    '_OUT.push("clip-method:"+(_clipMethod||"NONE"));' +
-                    'for(var _si=0;_si<app.project.sequences.numSequences;_si++){' +
-                        'try{' +
-                            'var _seq=app.project.sequences[_si];' +
-                            'if(!_seq||_skip(_seq.name))continue;' +
-                            'var _log=[];' +
-                            'var _missing=[];' +
-                            'for(var _pi=0;_pi<_plugins.length;_pi++){' +
-                                'var _p=_plugins[_pi];' +
-                                'try{' +
-                                    'var _atrk=_seq.audioTracks[_p.trackIdx];' +
-                                    'if(!_atrk||_atrk.clips.numItems===0)continue;' +
-                                    'var _ac=_atrk.clips[0];if(!_ac)continue;' +
-                                    'if(_hasComp(_ac,_p.name)){_log.push("ok:"+_p.name);}' +
-                                    'else{_missing.push(_p);}' +
-                                '}catch(e){_log.push("check-err:"+e.message);}' +
-                            '}' +
-                            'if(_missing.length===0){' +
-                                'if(_log.length)_OUT.push(_seq.name+": "+_log.join(" "));' +
-                                'continue;' +
-                            '}' +
-                            'if(!_clipMethod){_log.push("no-clip-method");_OUT.push(_seq.name+": "+_log.join(" "));continue;}' +
-                            'try{' +
-                                'app.project.activeSequence=_seq;' +
-                                'var _qeSeq=qe.project.getActiveSequence();' +
-                                'if(!_qeSeq){_log.push("no-qeSeq");} else {' +
-                                    'for(var _mi=0;_mi<_missing.length;_mi++){' +
-                                        'var _mp=_missing[_mi];' +
-                                        'var _added=false;' +
-                                        'try{' +
-                                            'var _qeAT=_qeSeq.getAudioTrackAt(_mp.trackIdx);' +
-                                            'if(_qeAT){' +
-                                                'var _qeAC=_qeAT[_clipMethod](0);' +
-                                                'if(_qeAC){' +
-                                                    // Try each add method
-                                                    'var _addMethods=["addEffect","addAudioEffect","addVideoEffect"];' +
-                                                    'for(var _am=0;_am<_addMethods.length;_am++){' +
-                                                        'if(typeof _qeAC[_addMethods[_am]]==="function"){' +
-                                                            'try{_qeAC[_addMethods[_am]](_mp.matchName);_added=true;_log.push("+"+_addMethods[_am]+":"+_mp.name);break;}' +
-                                                            'catch(eAdd){_log.push(_addMethods[_am]+"-err:"+eAdd.message);}' +
-                                                        '}' +
-                                                    '}' +
-                                                '}else{_log.push("null-clip:"+_mp.name);}' +
-                                            '}else{_log.push("null-qeAT:"+_mp.name);}' +
-                                        '}catch(eQE){_log.push("qe-err:"+_mp.name+":"+eQE.message);}' +
-                                        'if(!_added)_log.push("FAILED:"+_mp.name);' +
-                                    '}' +
-                                '}' +
-                            '}catch(act_e){_log.push("activate-err:"+act_e.message);}' +
-                            '_OUT.push(_seq.name+": "+_log.join(" "));' +
-                        '}catch(e){_OUT.push("seq-err:"+e.message);}' +
-                    '}' +
-                    'try{app.project.activeSequence=_origSeq;}catch(e){}' +
-                    'return _OUT.join("|");' +
+                        // Activate test seq and select the plugin source clip
+                        'var _testSeq=null;' +
+                        'for(var ti=0;ti<app.project.sequences.numSequences;ti++){var ts=app.project.sequences[ti];if(ts&&ts.name&&ts.name.toLowerCase()==="test"){_testSeq=ts;break;}}' +
+                        'if(!_testSeq)return "ERR:no-test-seq";' +
+                        'app.project.activeSequence=_testSeq;' +
+                        'var _tat=_testSeq.audioTracks[_tr];' +
+                        'if(!_tat||_tat.clips.numItems===0)return "ERR:no-clip-in-test";' +
+                        '_tat.clips[0].selected=true;' +
+                        '_out.push("src:ok");' +
+                    '}catch(e){return "ERR:"+e.message;}' +
+                    'return _out.join("|");' +
                     '})();';
 
-                window.__adobe_cep__.evalScript(jsx2, function (res2) {
-                    lwBtnPluginDx.disabled = false;
-                    if (!res2 || res2 === 'EvalScript error.') {
-                        lwLog('Phase 2 failed: ' + res2);
+                window.__adobe_cep__.evalScript(jsx2a, function(res2a) {
+                    if (!res2a || res2a === 'EvalScript error.' || res2a.indexOf('ERR:') === 0) {
+                        lwLog('Phase 2a failed: ' + res2a);
+                        lwBtnPluginDx.disabled = false;
                         return;
                     }
-                    var lines = res2.split('|').filter(function(l){ return l.trim(); });
-                    lwLog('Done: ' + lines.length + ' sequences.<br><small>' + lines.join('<br>') + '</small>');
+
+                    // Parse chapter list
+                    var _chapters = [], _alreadyDone = 0;
+                    var _p2parts = res2a.split('|');
+                    for (var _p2i = 0; _p2i < _p2parts.length; _p2i++) {
+                        var _p2 = _p2parts[_p2i];
+                        if (_p2.indexOf('SEQ:') === 0) {
+                            var _t2 = _p2.slice(4).split('~');
+                            _chapters.push({ id: _t2[0], name: _t2.slice(1).join('~') });
+                        } else if (_p2.indexOf('DONE:') === 0) {
+                            _alreadyDone++;
+                        }
+                    }
+
+                    if (!_chapters.length) {
+                        lwLog('All ' + _alreadyDone + ' sequences already have ' + _plugName0 + '. Nothing to do!');
+                        lwBtnPluginDx.disabled = false;
+                        return;
+                    }
+
+                    lwLog('Test clip selected. Copying... (' + _chapters.length + ' need plugin, ' + _alreadyDone + ' already done)');
+
+                    // Copy test clip via osascript
+                    var _cp = require('child_process');
+                    var _fs = require('fs');
+
+                    _fs.writeFileSync('/tmp/pp_copy_clip.scpt',
+                        'tell application "Adobe Premiere Pro 2025" to activate\n' +
+                        'delay 0.6\n' +
+                        'tell application "System Events"\n' +
+                        '  tell process "Adobe Premiere Pro 2025"\n' +
+                        '    keystroke "c" using command down\n' +
+                        '  end tell\n' +
+                        'end tell\n'
+                    );
+
+                    try {
+                        _cp.execSync('osascript /tmp/pp_copy_clip.scpt', { timeout: 6000 });
+                    } catch(_ce) {
+                        var _cerr = String(_ce.message || _ce);
+                        var _needsPerms = _cerr.indexOf('1002') >= 0 || _cerr.indexOf('-1743') >= 0 || _cerr.indexOf('keystroke') >= 0 || _cerr.indexOf('authorized') >= 0;
+                        if (_needsPerms) {
+                            lwLog('<b>&#9888; Permiso requerido:</b><br>' +
+                                'Para automatizar los atajos de teclado en Premiere Pro, debes dar permiso de Accesibilidad:<br>' +
+                                '<b>Configuración del Sistema &rsaquo; Privacidad y Seguridad &rsaquo; Accesibilidad</b><br>' +
+                                'Añade &ldquo;Adobe Premiere Pro 2025&rdquo; y vuelve a intentarlo.<br>' +
+                                '<small>(err: ' + _cerr.slice(0, 120) + ')</small>');
+                        } else {
+                            lwLog('Copy failed: ' + _cerr.slice(0, 200));
+                        }
+                        lwBtnPluginDx.disabled = false;
+                        return;
+                    }
+                    _cp.execSync('sleep 0.5');
+
+                    // Paste Attributes script (reused for every chapter)
+                    _fs.writeFileSync('/tmp/pp_paste_attrs.scpt',
+                        'tell application "System Events"\n' +
+                        '  tell process "Adobe Premiere Pro 2025"\n' +
+                        '    keystroke "v" using {command down, option down}\n' +
+                        '    delay 1.2\n' +
+                        '    key code 36\n' +  // Return — confirms the dialog
+                        '    delay 0.4\n' +
+                        '  end tell\n' +
+                        'end tell\n'
+                    );
+
+                    lwLog('Copied! Pasting to ' + _chapters.length + ' chapters...');
+
+                    var _applied = 0, _errCount = 0;
+
+                    function _next(idx) {
+                        if (idx >= _chapters.length) {
+                            lwLog('Done! &#10003; ' + _applied + '/' + _chapters.length + ' chapters.' +
+                                (_errCount ? ' &#10007; ' + _errCount + ' errors.' : '') +
+                                (_alreadyDone ? ' (' + _alreadyDone + ' already had plugin.)' : ''));
+                            lwBtnPluginDx.disabled = false;
+                            return;
+                        }
+
+                        var _ch = _chapters[idx];
+                        // Switch to chapter seq, select its audio clip
+                        var _jsxSel =
+                            '(function(){' +
+                            'var _id=' + JSON.stringify(_ch.id) + ';' +
+                            'var _tr=' + _tr0 + ';' +
+                            'for(var si=0;si<app.project.sequences.numSequences;si++){' +
+                                'var sq=app.project.sequences[si];' +
+                                'if(!sq)continue;' +
+                                'try{if(sq.sequenceID!==_id)continue;}catch(e){continue;}' +
+                                'app.project.activeSequence=sq;' +
+                                'var _at=sq.audioTracks[_tr];' +
+                                'if(!_at||_at.clips.numItems===0)return "no-clip:"+sq.name;' +
+                                '_at.clips[0].selected=true;' +
+                                'return "ok:"+sq.name;' +
+                            '}' +
+                            'return "not-found";' +
+                            '})();';
+
+                        window.__adobe_cep__.evalScript(_jsxSel, function(_resSel) {
+                            var _label = '[' + (idx + 1) + '/' + _chapters.length + '] ' + _ch.name;
+                            if (!_resSel || _resSel.indexOf('ok:') !== 0) {
+                                _errCount++;
+                                lwLog(_label + ': skip (' + (_resSel || 'no response') + ')');
+                                _next(idx + 1);
+                                return;
+                            }
+
+                            try {
+                                _cp.execSync('osascript /tmp/pp_paste_attrs.scpt', { timeout: 10000 });
+                                _applied++;
+                            } catch(_pe) {
+                                _errCount++;
+                                lwLog(_label + ': paste error — ' + String(_pe.message || _pe));
+                            }
+
+                            _next(idx + 1);
+                        });
+                    }
+
+                    _next(0);
                 });
             });
         });
