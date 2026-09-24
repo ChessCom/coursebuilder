@@ -2702,8 +2702,9 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 var names = plugins.map(function(p){ return p.name+'@A'+p.trackIdx; });
                 lwLog('Found: ' + names.join(', ') + '<br>Applying to all chapters...');
 
-                // Phase 2: add effects to clips in all chapter sequences via QE API
-                // Regular clip.addEffect() does NOT work for audio in PP25 — use QE
+                // Phase 2: add effects to clips in all chapter sequences
+                // clip.addEffect() doesn't work on audio TrackItems in PP25
+                // Workaround: open each sequence (makes it active), then use QE getActiveSequence
                 var plugData = JSON.stringify(plugins);
                 var jsx2 =
                     '(function(){' +
@@ -2711,46 +2712,55 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     'var _OUT=[];' +
                     'function _skip(n){var nl=n.toLowerCase();return nl==="test"||nl.indexOf("test")===0||nl.indexOf("nested sequence")===0||n.indexOf("PREVIEW")>=0;}' +
                     'function _hasComp(clip,nm){try{for(var i=0;i<clip.components.numItems;i++){if(clip.components[i].displayName===nm)return true;}}catch(e){}return false;}' +
-                    // Try QE API for adding audio effects
-                    'var _useQE=false;' +
-                    'try{app.enableQE();_useQE=true;}catch(e){}' +
+                    'var _useQE=false;try{app.enableQE();_useQE=true;}catch(e){}' +
+                    // Save current active sequence so we can restore it at the end
+                    'var _origSeq=app.project.activeSequence;' +
                     'for(var _si=0;_si<app.project.sequences.numSequences;_si++){' +
                         'try{' +
                             'var _seq=app.project.sequences[_si];' +
                             'if(!_seq||_skip(_seq.name))continue;' +
                             'var _log=[];' +
+                            // Check which plugins are missing on the first clip of each track
+                            'var _missing=[];' +
                             'for(var _pi=0;_pi<_plugins.length;_pi++){' +
                                 'var _p=_plugins[_pi];' +
                                 'try{' +
                                     'var _atrk=_seq.audioTracks[_p.trackIdx];' +
                                     'if(!_atrk||_atrk.clips.numItems===0)continue;' +
                                     'var _ac=_atrk.clips[0];if(!_ac)continue;' +
-                                    'if(_hasComp(_ac,_p.name)){_log.push("ok:"+_p.name);continue;}' +
-                                    // Try clip.addEffect first (may work in some PP versions)
-                                    'var _added=false;' +
-                                    'try{_ac.addEffect(_p.matchName);_added=true;_log.push("+"+_p.name);}catch(e){' +
-                                        // Fall back to QE addEffect
-                                        'if(_useQE){' +
+                                    'if(_hasComp(_ac,_p.name)){_log.push("ok:"+_p.name);}' +
+                                    'else{_missing.push(_p);}' +
+                                '}catch(e){_log.push("check-err:"+e.message);}' +
+                            '}' +
+                            // If any are missing, open this sequence and apply via QE
+                            'if(_missing.length>0&&_useQE){' +
+                                'try{' +
+                                    '_seq.open();' + // opens in timeline, makes it active
+                                    'var _qeSeq=qe.project.getActiveSequence();' +
+                                    'if(_qeSeq){' +
+                                        'for(var _mi=0;_mi<_missing.length;_mi++){' +
+                                            'var _mp=_missing[_mi];' +
                                             'try{' +
-                                                'var _qeSeq=qe.project.getSequenceByID(_seq.sequenceID);' +
-                                                'if(_qeSeq){' +
-                                                    'var _qeAT=_qeSeq.getAudioTrackAt(_p.trackIdx);' +
-                                                    'if(_qeAT){' +
-                                                        'var _qeAC=_qeAT.getClipAt(0);' +
-                                                        'if(_qeAC){' +
-                                                            'var _r=_qeAC.addEffect(_p.matchName);' +
-                                                            '_added=true;_log.push("QE+"+_p.name+"="+String(_r));' +
-                                                        '}' +
-                                                    '}' +
-                                                '}' +
-                                            '}catch(qe_e){_log.push("QE-fail:"+_p.name+":"+qe_e.message);}' +
-                                        '} else {_log.push("no-add-api:"+_p.name);}' +
-                                    '}' +
-                                '}catch(e2){_log.push("err:"+e2.message);}' +
+                                                'var _qeAT=_qeSeq.getAudioTrackAt(_mp.trackIdx);' +
+                                                'if(_qeAT){' +
+                                                    'var _qeAC=_qeAT.getClipAt(0);' +
+                                                    'if(_qeAC){' +
+                                                        'var _r=_qeAC.addEffect(_mp.matchName);' +
+                                                        '_log.push("+"+_mp.name+"="+String(_r));' +
+                                                    '}else{_log.push("no-qe-clip:"+_mp.name);}' +
+                                                '}else{_log.push("no-qe-trk:"+_mp.name);}' +
+                                            '}catch(qe_e){_log.push("QE-fail:"+_mp.name+":"+qe_e.message);}' +
+                                        '}' +
+                                    '}else{_log.push("no-qeSeq");}' +
+                                '}catch(open_e){_log.push("open-err:"+open_e.message);}' +
+                            '} else if(_missing.length>0){' +
+                                'for(var _mi2=0;_mi2<_missing.length;_mi2++){_log.push("MISSING:"+_missing[_mi2].name);}' +
                             '}' +
                             'if(_log.length)_OUT.push(_seq.name+": "+_log.join(" "));' +
                         '}catch(e){_OUT.push("seq-err:"+e.message);}' +
                     '}' +
+                    // Restore original active sequence
+                    'try{if(_origSeq)_origSeq.open();}catch(e){}' +
                     'return _OUT.join("|");' +
                     '})();';
 
