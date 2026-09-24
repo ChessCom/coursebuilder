@@ -2620,19 +2620,27 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
             lwLog('Reading audio plugins from test...');
 
             // Phase 1: capture audio comps from active test sequence
+            // _readComps: only stores serializable values (no opaque plugin blobs)
             var jsx1 =
                 'var _r={ok:false,err:"",audioTracks:[]};' +
                 'try{' +
                     'var _sq=app.project.activeSequence;' +
                     'if(!_sq)throw new Error("No active sequence");' +
+                    'function _safeVal(v){' +
+                        'var t=typeof v;' +
+                        'if(t==="number"||t==="boolean"||t==="string")return v;' +
+                        'if(v&&t==="object"&&typeof v.length==="number"){' +
+                            'var a=[];for(var i=0;i<v.length;i++){if(typeof v[i]==="number")a.push(v[i]);}return a;}' +
+                        'return null;}' +
                     'function _readComps(clip){' +
                         'var out=[];' +
                         'try{for(var i=0;i<clip.components.numItems;i++){' +
                             'var co=clip.components[i];' +
-                            'var coInfo={name:co.displayName,params:[]};' +
+                            'var mn="";try{mn=co.matchName||"";}catch(e){}' +
+                            'var coInfo={name:co.displayName,matchName:mn,params:[]};' +
                             'try{for(var j=0;j<co.properties.numItems;j++){' +
                                 'var pp=co.properties[j];' +
-                                'try{coInfo.params.push({name:pp.displayName,val:pp.getValue()});}catch(e){}' +
+                                'try{var sv=_safeVal(pp.getValue());if(sv!==null)coInfo.params.push({name:pp.displayName,val:sv});}catch(e){}' +
                             '}}catch(e){}' +
                             'out.push(coInfo);' +
                         '}}catch(e){}' +
@@ -2651,30 +2659,39 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
             window.__adobe_cep__.evalScript(jsx1, function (res1) {
                 var data;
                 try { data = JSON.parse(res1); } catch(e) { lwLog('Error JSON: ' + res1); lwBtnPluginDx.disabled = false; return; }
-                if (!data.ok) { lwLog('Error capturando plugins: ' + data.err); lwBtnPluginDx.disabled = false; return; }
+                if (!data.ok) { lwLog('Error reading plugins: ' + data.err); lwBtnPluginDx.disabled = false; return; }
                 if (!data.audioTracks.length) { lwLog('No audio tracks found in test sequence.'); lwBtnPluginDx.disabled = false; return; }
                 lwLog('Audio tracks captured: ' + data.audioTracks.length + '. Applying to chapters...');
 
-                // Phase 2: apply to all chapter sequences
+                // Phase 2: add missing effects + copy params to all chapter sequences
                 var jsx2 =
                     'var _OUT=[];' +
                     'var _audioTracks=' + JSON.stringify(data.audioTracks) + ';' +
+                    // Add effect if missing, then copy numeric params
                     'function _applyComps(newClip,compsData){' +
                         'var log=[];' +
-                        'try{for(var ci=0;ci<newClip.components.numItems;ci++){' +
-                            'var co=newClip.components[ci];' +
-                            'var srcCo=null;' +
-                            'for(var di=0;di<compsData.length;di++){if(compsData[di].name===co.displayName){srcCo=compsData[di];break;}}' +
-                            'if(!srcCo)continue;' +
-                            'for(var pi=0;pi<co.properties.numItems;pi++){' +
-                                'var pp=co.properties[pi];' +
-                                'var srcP=null;' +
-                                'for(var dpi=0;dpi<srcCo.params.length;dpi++){if(srcCo.params[dpi].name===pp.displayName){srcP=srcCo.params[dpi];break;}}' +
-                                'if(!srcP)continue;' +
-                                'try{pp.setValue(srcP.val,true);}catch(e){}' +
+                        'try{' +
+                            // Step A: add any missing effects by matchName
+                            'for(var di=0;di<compsData.length;di++){' +
+                                'var src=compsData[di];if(!src.matchName)continue;' +
+                                'var found=false;' +
+                                'for(var ci=0;ci<newClip.components.numItems;ci++){if(newClip.components[ci].displayName===src.name){found=true;break;}}' +
+                                'if(!found){try{newClip.addEffect(src.matchName);log.push("added:"+src.name);}catch(e){log.push("addFail:"+src.name);}}' +
                             '}' +
-                            'log.push(co.displayName);' +
-                        '}}catch(e){log.push("err:"+e.message);}' +
+                            // Step B: copy params on all matching components
+                            'for(var ci2=0;ci2<newClip.components.numItems;ci2++){' +
+                                'var co=newClip.components[ci2];var srcCo=null;' +
+                                'for(var di2=0;di2<compsData.length;di2++){if(compsData[di2].name===co.displayName){srcCo=compsData[di2];break;}}' +
+                                'if(!srcCo||!srcCo.params.length)continue;' +
+                                'for(var pi=0;pi<co.properties.numItems;pi++){' +
+                                    'var pp=co.properties[pi];var srcP=null;' +
+                                    'for(var dpi=0;dpi<srcCo.params.length;dpi++){if(srcCo.params[dpi].name===pp.displayName){srcP=srcCo.params[dpi];break;}}' +
+                                    'if(!srcP)continue;' +
+                                    'try{pp.setValue(srcP.val,true);}catch(e){}' +
+                                '}' +
+                                'log.push(co.displayName);' +
+                            '}' +
+                        '}catch(e){log.push("err:"+e.message);}' +
                         'return log.join(",");}' +
                     'function _skip(n){var nl=n.toLowerCase();return nl==="test"||nl.indexOf("test")===0||nl.indexOf("nested sequence")===0||n.indexOf("PREVIEW")>=0;}' +
                     'for(var _si=0;_si<app.project.sequences.numSequences;_si++){' +
