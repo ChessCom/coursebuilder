@@ -2623,7 +2623,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
     var lwBtnPluginPreset = document.getElementById('lwBtnPluginPreset');
     if (lwBtnPluginPreset) {
         lwBtnPluginPreset.addEventListener('click', function () {
-            var jsx = 'var _f=File.openDialog("Select audio effects preset","*.epr");_f?_f.fsName:"";';
+            var jsx = 'var _f=File.openDialog("Select audio effects preset","*.prfpset,*.epr");_f?_f.fsName:"";';
             window.__adobe_cep__.evalScript(jsx, function (res) {
                 if (!res || res === '') return;
                 lwPluginPresetPath = res;
