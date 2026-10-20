@@ -1,10 +1,10 @@
-/* Course Builder Panel v132 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v133 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v132</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v133</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2127,9 +2127,11 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
     lwCapture.addEventListener('click', function () {
         lwCapture.disabled = true;
         var jsx =
-            'var _r={ok:false,err:"",tbl:{x:0,y:0,s:100},aut:{x:0,y:0,s:100}};' +
+            'var _r={ok:false,err:"",seqName:"",w:0,h:0,numVClips:0,tbl:{x:0,y:0,s:100},aut:{x:0,y:0,s:100}};' +
             'try{var _sq=app.project.activeSequence;if(!_sq)throw new Error("No active sequence");' +
-            // find the two tracks with video clips (skip bg = PNG/JPG)
+            '_r.seqName=_sq.name;' +
+            '_r.w=_sq.frameSizeHorizontal;' +
+            '_r.h=_sq.frameSizeVertical;' +
             'var _vTracks=[];' +
             'for(var _ti=0;_ti<_sq.videoTracks.numTracks;_ti++){' +
                 'var _vt=_sq.videoTracks[_ti];if(_vt.clips.numItems===0)continue;' +
@@ -2137,6 +2139,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 'try{var _mp=_cl.projectItem.getMediaPath();if(/\\.png$|\\.jpg$/i.test(_mp))continue;}catch(_mpe){}' +
                 '_vTracks.push({idx:_ti,clip:_cl});' +
             '}' +
+            '_r.numVClips=_vTracks.length;' +
             'function _getMotion(clip){var _m={x:0,y:0,s:100};' +
                 'try{for(var _ci=0;_ci<clip.components.numItems;_ci++){' +
                     'var _co=clip.components[_ci];if(_co.displayName!=="Motion")continue;' +
@@ -2159,13 +2162,22 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 lwInps.tblX.value = Math.round(d.tbl.x * _w * 10) / 10;
                 lwInps.tblY.value = Math.round(d.tbl.y * _h * 10) / 10;
                 lwInps.tblS.value = Math.round(d.tbl.s * 10) / 10;
-                lwInps.autX.value = Math.round(d.aut.x * _w * 10) / 10;
-                lwInps.autY.value = Math.round(d.aut.y * _h * 10) / 10;
-                lwInps.autS.value = Math.round(d.aut.s * 10) / 10;
+                if (d.numVClips >= 2) {
+                    lwInps.autX.value = Math.round(d.aut.x * _w * 10) / 10;
+                    lwInps.autY.value = Math.round(d.aut.y * _h * 10) / 10;
+                    lwInps.autS.value = Math.round(d.aut.s * 10) / 10;
+                }
                 lwSave();
-                lwLog('Captured: Board (' + lwInps.tblX.value + ', ' + lwInps.tblY.value + ') s=' + lwInps.tblS.value +
-                      ' | Author (' + lwInps.autX.value + ', ' + lwInps.autY.value + ') s=' + lwInps.autS.value);
-            } catch(e) { lwLog('Parse error: ' + res); }
+                var _msg = 'Seq: <b>' + d.seqName + '</b> (' + _w + '&times;' + _h + ')<br>' +
+                    'Board (' + lwInps.tblX.value + ', ' + lwInps.tblY.value + ') s=' + lwInps.tblS.value;
+                if (d.numVClips >= 2) {
+                    _msg += '<br>Author (' + lwInps.autX.value + ', ' + lwInps.autY.value + ') s=' + lwInps.autS.value;
+                } else {
+                    _msg += '<br><b>&#9888; Solo ' + d.numVClips + ' clip(s) de video encontrado(s) — Author no capturado.</b><br>' +
+                        '<small>Abre la secuencia "test" con Board + Author posicionados y vuelve a capturar.</small>';
+                }
+                lwLog(_msg);
+            } catch(e) { lwLog('Parse error: ' + e.message + '<br>' + String(res).slice(0, 120)); }
         });
     });
 
