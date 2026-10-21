@@ -1,10 +1,10 @@
-/* Course Builder Panel v134 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v135 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v134</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v135</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2142,7 +2142,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 '_vTracks.push({idx:_ti,clip:_cl});' +
             '}' +
             '_r.numVClips=_vTracks.length;' +
-            '_r.clipNames=_vTracks.map(function(t){try{return t.clip.projectItem?t.clip.projectItem.name:"[no-pi]";}catch(e){return "[err]";}});' +
+            '_r.clipNames=[];for(var _cni=0;_cni<_vTracks.length;_cni++){try{_r.clipNames.push(_vTracks[_cni].clip.projectItem?_vTracks[_cni].clip.projectItem.name:"[no-pi]");}catch(_cne){_r.clipNames.push("[err]");}}' +
             'function _getMotion(clip){var _m={x:0,y:0,s:100};' +
                 'try{for(var _ci=0;_ci<clip.components.numItems;_ci++){' +
                     'var _co=clip.components[_ci];if(_co.displayName!=="Motion")continue;' +
