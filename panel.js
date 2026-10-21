@@ -1,10 +1,10 @@
-/* Course Builder Panel v137 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v138 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v137</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v138</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2559,6 +2559,8 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
                             // 9. Place Intro-Outro at chapter end (before clearing A2/A3 so auto-route goes there and is then cleaned)
                             '_step="placeIO";' +
+                            'var _chapDurT=_srcDur-_cutST-_cutET;' +
+                            'var _ioDurT=0;' +
                             'if(_ioPath){' +
                                 'try{' +
                                     'var _ioItem=_findByPath(_ioPath);' +
@@ -2567,7 +2569,8 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                                         '_ioItem=_findByPath(_ioPath);' +
                                     '}' +
                                     'if(_ioItem){' +
-                                        'var _ioSeqT=new Time();_ioSeqT.ticks=String(Math.round(_srcDur-_cutST-_cutET));' +
+                                        'try{_ioDurT=parseFloat(_ioItem.getOutPoint().ticks)-parseFloat(_ioItem.getInPoint().ticks);}catch(e){}' +
+                                        'var _ioSeqT=new Time();_ioSeqT.ticks=String(Math.round(_chapDurT));' +
                                         'for(var _ioti=0;_ioti<_tracks.length;_ioti++){' +
                                             'var _iotd=_tracks[_ioti];' +
                                             'if(!_iotd.isChapter)continue;' +
@@ -2575,7 +2578,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                                             'try{_iotrk=(_iotd.type==="video")?_newSeq.videoTracks[_iotd.idx]:_newSeq.audioTracks[_iotd.idx];}catch(e){}' +
                                             'if(_iotrk){try{_iotrk.overwriteClip(_ioItem,_ioSeqT);}catch(e){}}' +
                                         '}' +
-                                        '_OUT.push("IO:OK");' +
+                                        '_OUT.push("IO:OK ioDur="+(parseFloat(_ioDurT)/254016000000).toFixed(2)+"s");' +
                                     '}else{_OUT.push("IO:item-not-found");}' +
                                 '}catch(e){_OUT.push("IO-ERR:"+e.message);}' +
                             '}' +
@@ -2602,8 +2605,8 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                                         '_bgItem=_findByPath(_bgPath);' +
                                     '}' +
                                     'if(_bgItem){' +
-                                        'var _seqEndT=parseFloat(_newSeq.end.ticks);' +
-                                        'var _bgDurT=new Time();_bgDurT.ticks=String(_seqEndT);' +
+                                        'var _seqEndT=_chapDurT+_ioDurT;' +
+                                        'var _bgDurT=new Time();_bgDurT.ticks=String(Math.round(_seqEndT));' +
                                         // type=1 (clip time) — type=0 resets still images to 1 frame
                                         'try{_bgItem.setOutPoint(_bgDurT,1);}catch(e){_OUT.push("bg-setOP-err:"+e.message);}' +
                                         '_newSeq.videoTracks[0].overwriteClip(_bgItem,_t0);' +
