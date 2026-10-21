@@ -1,10 +1,10 @@
-/* Course Builder Panel v138 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v139 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v138</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v139</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2426,6 +2426,15 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
                     'var _t0=new Time();_t0.ticks="0";' +
 
+                    // Detect which video track index receives the background:
+                    // the first video track in _tracks that is NOT isChapter (lowest index).
+                    // Falls back to 0 if all video tracks are chapter tracks.
+                    'var _bgTrackIdx=0;' +
+                    'for(var _bgti=0;_bgti<_tracks.length;_bgti++){' +
+                        'if(_tracks[_bgti].type==="video"&&!_tracks[_bgti].isChapter){_bgTrackIdx=_tracks[_bgti].idx;break;}' +
+                    '}' +
+                    '_OUT.push("bgTrack:V"+(_bgTrackIdx+1));' +
+
                     'for(var _chi=0;_chi<_chaps.length;_chi++){' +
                         'var _chap=_chaps[_chi];var _step="find";' +
                         'try{' +
@@ -2548,10 +2557,10 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                                 '}' +
                             '}catch(e){_OUT.push("unlink-err:"+e.message);}' +
 
-                            // 8. Clear V1 (videoTracks[0]) — will receive the background
+                            // 8. Clear bgTrack (videoTracks[_bgTrackIdx]) — will receive the background
                             '_step="clearV1";' +
                             'try{' +
-                                'var _v1trk=_newSeq.videoTracks[0];' +
+                                'var _v1trk=_newSeq.videoTracks[_bgTrackIdx];' +
                                 'var _v1n=_v1trk.clips.numItems;' +
                                 'for(var _v1ri=_v1n-1;_v1ri>=0;_v1ri--){try{_v1trk.clips[_v1ri].remove(false,false);}catch(e){}}' +
                                 'for(var _v1ri2=_v1trk.clips.numItems;_v1ri2>=1;_v1ri2--){try{_v1trk.clips[_v1ri2].remove(false,false);}catch(e){}}' +
@@ -2609,8 +2618,8 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                                         'var _bgDurT=new Time();_bgDurT.ticks=String(Math.round(_seqEndT));' +
                                         // type=1 (clip time) — type=0 resets still images to 1 frame
                                         'try{_bgItem.setOutPoint(_bgDurT,1);}catch(e){_OUT.push("bg-setOP-err:"+e.message);}' +
-                                        '_newSeq.videoTracks[0].overwriteClip(_bgItem,_t0);' +
-                                        'try{var _bgC=_newSeq.videoTracks[0].clips[0];if(!_bgC)_bgC=_newSeq.videoTracks[0].clips[1];' +
+                                        '_newSeq.videoTracks[_bgTrackIdx].overwriteClip(_bgItem,_t0);' +
+                                        'try{var _bgC=_newSeq.videoTracks[_bgTrackIdx].clips[0];if(!_bgC)_bgC=_newSeq.videoTracks[_bgTrackIdx].clips[1];' +
                                             'if(_bgC){_OUT.push("bg-dur:"+Math.round(parseFloat(_bgC.end.ticks)/254016000000)+"s/target:"+Math.round(_seqEndT/254016000000)+"s");}}catch(e){}' +
                                         '_OUT.push("bg:OK");' +
                                     '}else{_OUT.push("bg:item-not-found");}' +
