@@ -1,10 +1,10 @@
-/* Course Builder Panel v133 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v134 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v133</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v134</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2135,11 +2135,14 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
             'var _vTracks=[];' +
             'for(var _ti=0;_ti<_sq.videoTracks.numTracks;_ti++){' +
                 'var _vt=_sq.videoTracks[_ti];if(_vt.clips.numItems===0)continue;' +
-                'var _cl=_vt.clips[0];if(!_cl.projectItem)continue;' +
-                'try{var _mp=_cl.projectItem.getMediaPath();if(/\\.png$|\\.jpg$/i.test(_mp))continue;}catch(_mpe){}' +
+                'var _cl=_vt.clips[0];if(!_cl)continue;' +
+                'var _skipClip=false;' +
+                'try{var _mp=_cl.projectItem?_cl.projectItem.getMediaPath():"";if(/\\.png$|\\.jpg$/i.test(_mp))_skipClip=true;}catch(_mpe){}' +
+                'if(_skipClip)continue;' +
                 '_vTracks.push({idx:_ti,clip:_cl});' +
             '}' +
             '_r.numVClips=_vTracks.length;' +
+            '_r.clipNames=_vTracks.map(function(t){try{return t.clip.projectItem?t.clip.projectItem.name:"[no-pi]";}catch(e){return "[err]";}});' +
             'function _getMotion(clip){var _m={x:0,y:0,s:100};' +
                 'try{for(var _ci=0;_ci<clip.components.numItems;_ci++){' +
                     'var _co=clip.components[_ci];if(_co.displayName!=="Motion")continue;' +
@@ -2168,7 +2171,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     lwInps.autS.value = Math.round(d.aut.s * 10) / 10;
                 }
                 lwSave();
-                var _msg = 'Seq: <b>' + d.seqName + '</b> (' + _w + '&times;' + _h + ')<br>' +
+                var _msg = 'Seq: <b>' + d.seqName + '</b> (' + _w + '&times;' + _h + ') — ' + d.numVClips + ' clips: ' + (d.clipNames||[]).join(', ') + '<br>' +
                     'Board (' + lwInps.tblX.value + ', ' + lwInps.tblY.value + ') s=' + lwInps.tblS.value;
                 if (d.numVClips >= 2) {
                     _msg += '<br>Author (' + lwInps.autX.value + ', ' + lwInps.autY.value + ') s=' + lwInps.autS.value;
