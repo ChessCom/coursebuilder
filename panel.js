@@ -1,10 +1,10 @@
-/* Course Builder Panel v135 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v136 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v135</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v136</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -146,7 +146,10 @@ document.getElementById('app').innerHTML = [
     '    <div class="lu-info" id="lwBgInfo" style="margin:0;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">&mdash;</div>',
     '  </div>',
     '  <div class="lu-info" id="lwInfo" style="margin-bottom:4px">Open the active <b>test</b> sequence and press Apply.</div>',
-    '  <button class="btn-lu-run" id="lwBtnRun" style="width:100%">&#9654;&#9654; Apply to all chapters</button>',
+    '  <div style="display:flex;gap:4px">',
+    '    <button class="btn-lu-run" id="lwBtnRun" style="flex:1">&#9654;&#9654; Apply to all chapters</button>',
+    '    <button class="btn-small" id="lwBtnRunTest" style="flex:0 0 auto;font-size:10px">&#128270; 1 cap</button>',
+    '  </div>',
     '  <div style="display:flex;align-items:center;gap:6px;margin-top:6px">',
     '    <button class="btn-small" id="lwBtnPluginPreset" style="flex-shrink:0">Plugin preset...</button>',
     '    <div class="lu-info" id="lwPluginPresetInfo" style="margin:0;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">&mdash;</div>',
@@ -2044,9 +2047,10 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
 /* ── Legacy Wistia ──────────────────────────────────────────────────────── */
 (function () {
-    var lwBtn     = document.getElementById('lwBtnRun');
-    var lwCapture = document.getElementById('lwBtnCapture');
-    var lwStatus  = document.getElementById('lwStatus');
+    var lwBtn         = document.getElementById('lwBtnRun');
+    var lwBtnRunTest  = document.getElementById('lwBtnRunTest');
+    var lwCapture     = document.getElementById('lwBtnCapture');
+    var lwStatus      = document.getElementById('lwStatus');
     if (!lwBtn) return;
 
     // inputs
@@ -2184,9 +2188,10 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         });
     });
 
-    lwBtn.addEventListener('click', function () {
+    function lwRunApply(singleChap) {
         lwBtn.disabled = true;
-        lwLog('Reading test sequence...');
+        if (lwBtnRunTest) lwBtnRunTest.disabled = true;
+        lwLog('Reading test sequence' + (singleChap ? ' (1 cap test)' : '') + '...');
 
         // ── Phase 1: read test sequence ──────────────────────────────────
         var jsx1 =
@@ -2322,8 +2327,8 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
         window.__adobe_cep__.evalScript(jsx1, function (res1) {
             var data;
-            try { data = JSON.parse(res1); } catch(e) { lwLog('Error JSON: ' + res1); lwBtn.disabled = false; return; }
-            if (!data.ok) { lwLog('Error: ' + data.err); lwBtn.disabled = false; return; }
+            try { data = JSON.parse(res1); } catch(e) { lwLog('Error JSON: ' + res1); lwBtn.disabled = false; if (lwBtnRunTest) lwBtnRunTest.disabled = false; return; }
+            if (!data.ok) { lwLog('Error: ' + data.err); lwBtn.disabled = false; if (lwBtnRunTest) lwBtnRunTest.disabled = false; return; }
 
             var cutStartT = data.cutStartT;
             var cutEndT   = data.cutEndT;
@@ -2351,10 +2356,11 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
             window.__adobe_cep__.evalScript(jsx2, function (res2) {
                 var chapters;
-                try { chapters = JSON.parse(res2); } catch(e) { lwLog('Error parsing chapters: ' + res2); lwBtn.disabled = false; return; }
-                if (!chapters.length) { lwLog('No chapters found (mp4/mov without PREVIEW) in the project.'); lwBtn.disabled = false; return; }
+                try { chapters = JSON.parse(res2); } catch(e) { lwLog('Error parsing chapters: ' + res2); lwBtn.disabled = false; if (lwBtnRunTest) lwBtnRunTest.disabled = false; return; }
+                if (!chapters.length) { lwLog('No chapters found (mp4/mov without PREVIEW) in the project.'); lwBtn.disabled = false; if (lwBtnRunTest) lwBtnRunTest.disabled = false; return; }
 
-                lwLog('Capítulos encontrados: ' + chapters.length + '<br>Procesando...');
+                if (singleChap) chapters = chapters.slice(0, 1);
+                lwLog('Capítulos' + (singleChap ? ' (test: 1)' : ': ' + chapters.length) + '<br>Procesando...');
 
                 // ── Phase 3: for each chapter create sequence ──────────────
                 var tracksJSON  = JSON.stringify(data.tracks);
@@ -2619,6 +2625,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
                 window.__adobe_cep__.evalScript(jsx3, function (res3) {
                     lwBtn.disabled = false;
+                    if (lwBtnRunTest) lwBtnRunTest.disabled = false;
                     var lines = (res3 || '').split('|');
                     var ok  = lines.filter(function(l){ return l.indexOf('OK') === 0; }).length;
                     var err = lines.filter(function(l){ return l.indexOf('SKIP') === 0 || l.indexOf('ERR') === 0; }).length;
@@ -2628,11 +2635,14 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     } catch(logE) {
                         try { cep.fs.writeFile('/Users/raulmartinez/Desktop/lw_log.txt', lines.join('\n'), cep.encoding.UTF8); } catch(e2) {}
                     }
-                    lwLog('Done: ' + ok + ' sequences created, ' + err + ' skipped.<br><small>' + lines.join('<br>') + '</small>');
+                    lwLog((singleChap ? '[TEST 1 cap] ' : '') + 'Done: ' + ok + ' sequences created, ' + err + ' skipped.<br><small>' + lines.join('<br>') + '</small>');
                 });
             });
         });
-    });
+    }
+
+    lwBtn.addEventListener('click', function () { lwRunApply(false); });
+    if (lwBtnRunTest) lwBtnRunTest.addEventListener('click', function () { lwRunApply(true); });
 
     // ── Plugin preset picker ────────────────────────────────────────────────
     var lwPluginPresetPath = '';
