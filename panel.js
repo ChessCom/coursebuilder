@@ -1,10 +1,10 @@
-/* Course Builder Panel v136 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v137 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v136</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v137</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2359,8 +2359,12 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 try { chapters = JSON.parse(res2); } catch(e) { lwLog('Error parsing chapters: ' + res2); lwBtn.disabled = false; if (lwBtnRunTest) lwBtnRunTest.disabled = false; return; }
                 if (!chapters.length) { lwLog('No chapters found (mp4/mov without PREVIEW) in the project.'); lwBtn.disabled = false; if (lwBtnRunTest) lwBtnRunTest.disabled = false; return; }
 
-                if (singleChap) chapters = chapters.slice(0, 1);
-                lwLog('Capítulos' + (singleChap ? ' (test: 1)' : ': ' + chapters.length) + '<br>Procesando...');
+                if (singleChap) {
+                    var _skipPat = /intro.?outro|_no_audio|bg_chapter|background|fade_in|fade_out|preview/i;
+                    var _real = chapters.filter(function(c) { return !_skipPat.test(c.name); });
+                    chapters = (_real.length ? _real : chapters).slice(0, 1);
+                }
+                lwLog('Capítulos' + (singleChap ? ' (test: 1 → ' + (chapters[0] ? chapters[0].name : '?') + ')' : ': ' + chapters.length) + '<br>Procesando...');
 
                 // ── Phase 3: for each chapter create sequence ──────────────
                 var tracksJSON  = JSON.stringify(data.tracks);
