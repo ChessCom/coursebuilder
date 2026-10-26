@@ -1,10 +1,10 @@
-/* Course Builder Panel v139 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v140 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v139</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v140</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2346,7 +2346,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                         'if(_ch.type===ProjectItemType.CLIP){' +
                             'try{var _mp=_ch.getMediaPath();' +
                             'if(!_mp||!/\\.mp4$|\\.mov$/i.test(_mp))continue;' +
-                            'if(/preview/i.test(_ch.name))continue;' +
+                            'if(/preview|fade_in|fade_out|fade in|fade out/i.test(_ch.name))continue;' +
                             '_items.push({name:_ch.name,path:_mp});}catch(_e){}' +
                         '}else{_scan(_ch);}' +
                     '}' +
@@ -2566,9 +2566,27 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                                 'for(var _v1ri2=_v1trk.clips.numItems;_v1ri2>=1;_v1ri2--){try{_v1trk.clips[_v1ri2].remove(false,false);}catch(e){}}' +
                             '}catch(e){_OUT.push("clearV1-err:"+e.message);}' +
 
-                            // 9. Place Intro-Outro at chapter end (before clearing A2/A3 so auto-route goes there and is then cleaned)
-                            '_step="placeIO";' +
+                            // 9a. Reposition fade_out clips on non-chapter tracks to chapter_end - fade_duration
+                            '_step="moveFadeOut";' +
                             'var _chapDurT=_srcDur-_cutST-_cutET;' +
+                            'for(var _foti=0;_foti<_tracks.length;_foti++){' +
+                                'var _fotd=_tracks[_foti];if(_fotd.isChapter)continue;' +
+                                'var _fotk=null;' +
+                                'try{_fotk=(_fotd.type==="video")?_newSeq.videoTracks[_fotd.idx]:_newSeq.audioTracks[_fotd.idx];}catch(e){}' +
+                                'if(!_fotk)continue;' +
+                                'for(var _focci=0;_focci<_fotk.clips.numItems;_focci++){' +
+                                    'var _focc=_fotk.clips[_focci];' +
+                                    'var _foccName="";' +
+                                    'try{_foccName=_focc.projectItem?_focc.projectItem.name:"";}catch(e){}' +
+                                    'if(!/fade.?out/i.test(_foccName))continue;' +
+                                    'var _foDurT=parseFloat(_focc.end.ticks)-parseFloat(_focc.start.ticks);' +
+                                    'var _foNewT=new Time();_foNewT.ticks=String(Math.round(_chapDurT-_foDurT));' +
+                                    'try{_focc.start=_foNewT;_OUT.push("fadeOut moved to "+(parseFloat(_chapDurT-_foDurT)/254016000000).toFixed(2)+"s");}catch(e){_OUT.push("fadeOut-move-err:"+e.message);}' +
+                                '}' +
+                            '}' +
+
+                            // 9b. Place Intro-Outro at chapter end
+                            '_step="placeIO";' +
                             'var _ioDurT=0;' +
                             'if(_ioPath){' +
                                 'try{' +
