@@ -1,10 +1,10 @@
-/* Course Builder Panel v140 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v141 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v140</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v141</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2193,6 +2193,32 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
         if (lwBtnRunTest) lwBtnRunTest.disabled = true;
         lwLog('Reading test sequence' + (singleChap ? ' (1 cap test)' : '') + '...');
 
+        // ── Ping: verify evalScript + detect PP version ───────────────────
+        var jsxPing =
+            'var _p={ok:false,ppVer:"",seqName:"",err:""};' +
+            'try{' +
+                '_p.ppVer=app.version||"?";' +
+                'var _psq=app.project.activeSequence;' +
+                '_p.seqName=_psq?_psq.name:"(none)";' +
+                '_p.ok=true;' +
+            '}catch(e){_p.err=e.message;}' +
+            'var _pj="{}";try{_pj=JSON.stringify(_p);}catch(je){_pj=\'{"ok":false,"err":"JSON fail"}\'}' +
+            '_pj;';
+        window.__adobe_cep__.evalScript(jsxPing, function(resPing) {
+            var ppOk = false, ppInfo = '';
+            try {
+                var pd = JSON.parse(resPing);
+                ppOk = pd.ok;
+                ppInfo = 'PP ' + pd.ppVer + ', seq: ' + pd.seqName;
+                if (!pd.ok) ppInfo += ' ERR:' + pd.err;
+            } catch(e) { ppInfo = 'evalScript no disponible: ' + resPing; }
+            if (!ppOk) { lwLog('Error de diagnóstico: ' + ppInfo); lwBtn.disabled = false; if (lwBtnRunTest) lwBtnRunTest.disabled = false; return; }
+            lwLog('PP OK — ' + ppInfo);
+            lwRunPhase1(singleChap);
+        });
+    }
+
+    function lwRunPhase1(singleChap) {
         // ── Phase 1: read test sequence ──────────────────────────────────
         var jsx1 =
             'var _r={ok:false,err:"",cutStartT:0,cutEndT:0,fps:0,w:0,h:0,testChapPath:"",tracks:[]};' +
@@ -2323,7 +2349,8 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
                 '_r.ok=true;' +
             '}catch(_e){_r.err=_e.message;}' +
-            'JSON.stringify(_r);';
+            'var _rj="{}";try{_rj=JSON.stringify(_r);}catch(_je){_rj=\'{"ok":false,"err":"JSON.stringify failed: \'+_je.message+\'"}\'}' +
+            '_rj;';
 
         window.__adobe_cep__.evalScript(jsx1, function (res1) {
             var data;
