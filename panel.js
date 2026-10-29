@@ -1,10 +1,10 @@
-/* Course Builder Panel v141 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v142 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v141</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v142</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2191,30 +2191,53 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
     function lwRunApply(singleChap) {
         lwBtn.disabled = true;
         if (lwBtnRunTest) lwBtnRunTest.disabled = true;
-        lwLog('Reading test sequence' + (singleChap ? ' (1 cap test)' : '') + '...');
+        lwLog('Inicializando...');
 
-        // ── Ping: verify evalScript + detect PP version ───────────────────
-        var jsxPing =
-            'var _p={ok:false,ppVer:"",seqName:"",err:""};' +
-            'try{' +
-                '_p.ppVer=app.version||"?";' +
-                'var _psq=app.project.activeSequence;' +
-                '_p.seqName=_psq?_psq.name:"(none)";' +
-                '_p.ok=true;' +
-            '}catch(e){_p.err=e.message;}' +
-            'var _pj="{}";try{_pj=JSON.stringify(_p);}catch(je){_pj=\'{"ok":false,"err":"JSON fail"}\'}' +
-            '_pj;';
-        window.__adobe_cep__.evalScript(jsxPing, function(resPing) {
-            var ppOk = false, ppInfo = '';
-            try {
-                var pd = JSON.parse(resPing);
-                ppOk = pd.ok;
-                ppInfo = 'PP ' + pd.ppVer + ', seq: ' + pd.seqName;
-                if (!pd.ok) ppInfo += ' ERR:' + pd.err;
-            } catch(e) { ppInfo = 'evalScript no disponible: ' + resPing; }
-            if (!ppOk) { lwLog('Error de diagnóstico: ' + ppInfo); lwBtn.disabled = false; if (lwBtnRunTest) lwBtnRunTest.disabled = false; return; }
-            lwLog('PP OK — ' + ppInfo);
-            lwRunPhase1(singleChap);
+        // ── 0. Inject JSON.stringify polyfill (PP Beta lacks it in ExtendScript) ──
+        var jsxPoly =
+            'if(typeof JSON==="undefined"){JSON={};}' +
+            'if(typeof JSON.stringify!=="function"){' +
+            'JSON.stringify=function _s(v){' +
+            'var q=String.fromCharCode(34),bs=String.fromCharCode(92);' +
+            'if(v===null||v===undefined)return"null";' +
+            'var t=typeof v;' +
+            'if(t==="boolean")return v?"true":"false";' +
+            'if(t==="number")return isNaN(v)?"null":String(v);' +
+            'if(t==="string"){var r="",c,si;for(si=0;si<v.length;si++){c=v.charAt(si);' +
+            'if(c===q)r+=bs+q;else if(c===bs)r+=bs+bs;' +
+            'else if(c==="\\n")r+=bs+"n";else if(c==="\\r")r+=bs+"r";else if(c==="\\t")r+=bs+"t";' +
+            'else r+=c;}return q+r+q;}' +
+            'if(v instanceof Array){var a=[];for(var ai=0;ai<v.length;ai++)a.push(_s(v[ai]));return"["+a.join(",")+"]";}' +
+            'var p=[];for(var k in v){if(Object.prototype.hasOwnProperty.call(v,k)&&typeof v[k]!=="function")p.push(_s(String(k))+":"+_s(v[k]));}' +
+            'return"{"+p.join(",")+"}";' +
+            '};}' +
+            '"poly-ok"';
+
+        window.__adobe_cep__.evalScript(jsxPoly, function(polyRes) {
+            if (!polyRes || polyRes.indexOf('EvalScript') !== -1) {
+                lwLog('Error: evalScript no responde (' + polyRes + ')');
+                lwBtn.disabled = false; if (lwBtnRunTest) lwBtnRunTest.disabled = false; return;
+            }
+
+            // ── Ping: detect PP version ───────────────────────────────────
+            var jsxPing =
+                'var _p={ok:false,ppVer:"",seqName:"",err:""};' +
+                'try{_p.ppVer=app.version||"?";var _psq=app.project.activeSequence;_p.seqName=_psq?_psq.name:"(none)";_p.ok=true;}' +
+                'catch(e){_p.err=e.message;}' +
+                'JSON.stringify(_p);';
+            window.__adobe_cep__.evalScript(jsxPing, function(resPing) {
+                var ppOk = false, ppInfo = '';
+                try {
+                    var pd = JSON.parse(resPing);
+                    ppOk = pd.ok;
+                    ppInfo = 'PP ' + pd.ppVer + ', seq: ' + pd.seqName;
+                    if (!pd.ok) ppInfo += ' ERR:' + pd.err;
+                } catch(e) { ppInfo = 'parse error: ' + resPing; }
+                if (!ppOk) { lwLog('Error diagnóstico: ' + ppInfo); lwBtn.disabled = false; if (lwBtnRunTest) lwBtnRunTest.disabled = false; return; }
+                lwLog('PP ' + (ppInfo) + (polyRes === 'poly-ok' ? ' [JSON polyfill inyectado]' : ''));
+                lwLog('Reading test sequence' + (singleChap ? ' (1 cap test)' : '') + '...');
+                lwRunPhase1(singleChap);
+            });
         });
     }
 
