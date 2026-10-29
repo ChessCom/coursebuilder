@@ -1,10 +1,10 @@
-/* Course Builder Panel v142 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v143 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v142</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v143</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2285,16 +2285,26 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     '_r.tracks.push(_tinfo);' +
                 '}' +
 
-                // ── read audio tracks ──
+                // ── read audio tracks (clips + track-level FX from Audio Track Mixer) ──
                 'for(var _ati=0;_ati<_sq.audioTracks.numTracks;_ati++){' +
                     'var _at=_sq.audioTracks[_ati];' +
                     'if(_at.clips.numItems===0)continue;' +
-                    'var _atinfo={idx:_ati,type:"audio",isChapter:false,clips:[]};' +
+                    'var _atinfo={idx:_ati,type:"audio",isChapter:false,clips:[],trackComps:[]};' +
                     'for(var _aci=0;_aci<_at.clips.numItems;_aci++){' +
                         'var _ac=_at.clips[_aci];' +
                         'var _aMediaPath="";try{_aMediaPath=_ac.projectItem.getMediaPath();}catch(e){}' +
                         '_atinfo.clips.push({startT:parseFloat(_ac.start.ticks)||0,endT:parseFloat(_ac.end.ticks)||0,mediaPath:_aMediaPath,comps:_readComps(_ac)});' +
                     '}' +
+                    // Read track-level components (Audio Track Mixer FX like dxRevive)
+                    'try{for(var _atci=0;_atci<_at.components.numItems;_atci++){' +
+                        'var _atco=_at.components[_atci];' +
+                        'var _atcoInfo={name:_atco.displayName,params:[]};' +
+                        'try{for(var _atcj=0;_atcj<_atco.properties.numItems;_atcj++){' +
+                            'var _atcpp=_atco.properties[_atcj];' +
+                            'try{_atcoInfo.params.push({name:_atcpp.displayName,val:_atcpp.getValue()});}catch(e){}' +
+                        '}}catch(e){}' +
+                        '_atinfo.trackComps.push(_atcoInfo);' +
+                    '}}catch(e){}' +
                     '_r.tracks.push(_atinfo);' +
                 '}' +
 
@@ -2586,6 +2596,18 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                                         '_OUT.push(_td.type[0].toUpperCase()+_td.idx+":comps=["+_compsSet+"]");' +
                                     '}' +
                                 '}' +
+                            '}' +
+
+                            // 6b. Re-apply track-level FX (Audio Track Mixer effects like dxRevive)
+                            '_step="trackFX";' +
+                            'for(var _tcti=0;_tcti<_tracks.length;_tcti++){' +
+                                'var _tctd=_tracks[_tcti];' +
+                                'if(!_tctd.trackComps||_tctd.trackComps.length===0)continue;' +
+                                'var _tctk=null;' +
+                                'try{_tctk=(_tctd.type==="video")?_newSeq.videoTracks[_tctd.idx]:_newSeq.audioTracks[_tctd.idx];}catch(e){}' +
+                                'if(!_tctk)continue;' +
+                                'var _tclog=_applyComps(_tctk,_tctd.trackComps);' +
+                                'if(_tclog)_OUT.push("trackFX:"+_tctd.type+_tctd.idx+":["+_tclog+"]");' +
                             '}' +
 
                             // 7. Unlink all clips so tracks can be edited independently
