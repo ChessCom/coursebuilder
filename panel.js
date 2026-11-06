@@ -1,10 +1,10 @@
-/* Course Builder Panel v145 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v146 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v145</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v146</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2917,11 +2917,9 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                         '    set ppProc to (name of p)\n' +
                         '    exit repeat\n' +
                         '  end repeat\n' +
-                        'end tell\n' +
-                        'if ppProc is "" then error "No Premiere Pro process found"\n' +
-                        'tell application ppProc to activate\n' +
-                        'delay 0.5\n' +
-                        'tell application "System Events"\n' +
+                        '  if ppProc is "" then error "No Premiere Pro process found"\n' +
+                        '  set frontmost of process ppProc to true\n' +
+                        '  delay 0.4\n' +
                         '  tell process ppProc\n' +
                         '    click menu bar item "Edit" of menu bar 1\n' +
                         '    delay 0.3\n' +
@@ -2931,7 +2929,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     );
 
                     try {
-                        _cp.execSync('osascript /tmp/pp_copy_clip.scpt', { timeout: 6000 });
+                        _cp.execSync('osascript /tmp/pp_copy_clip.scpt', { timeout: 20000 });
                     } catch(_ce) {
                         var _cerr = String(_ce.message || _ce);
                         var _needsPerms = _cerr.indexOf('1002') >= 0 || _cerr.indexOf('-1743') >= 0 || _cerr.indexOf('keystroke') >= 0 || _cerr.indexOf('authorized') >= 0;
@@ -2960,11 +2958,9 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                         '    set ppProc to (name of p)\n' +
                         '    exit repeat\n' +
                         '  end repeat\n' +
-                        'end tell\n' +
-                        'if ppProc is "" then error "No Premiere Pro process found"\n' +
-                        'tell application ppProc to activate\n' +
-                        'delay 0.5\n' +
-                        'tell application "System Events"\n' +
+                        '  if ppProc is "" then error "No Premiere Pro process found"\n' +
+                        '  set frontmost of process ppProc to true\n' +
+                        '  delay 0.4\n' +
                         '  tell process ppProc\n' +
                         '    set mainWin to front window\n' +
                         '    set wx to item 1 of (get position of mainWin)\n' +
@@ -3026,7 +3022,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                             _cp.execSync('sleep 1.0');
 
                             try {
-                                _cp.execSync('osascript /tmp/pp_paste_attrs.scpt', { timeout: 12000 });
+                                _cp.execSync('osascript /tmp/pp_paste_attrs.scpt', { timeout: 25000 });
                                 _applied++;
                             } catch(_pe) {
                                 _errCount++;
@@ -3173,11 +3169,9 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                         '    set ppProc to (name of p)\n' +
                         '    exit repeat\n' +
                         '  end repeat\n' +
-                        'end tell\n' +
-                        'if ppProc is "" then error "No Premiere Pro process found"\n' +
-                        'tell application ppProc to activate\n' +
-                        'delay 0.5\n' +
-                        'tell application "System Events"\n' +
+                        '  if ppProc is "" then error "No Premiere Pro process found"\n' +
+                        '  set frontmost of process ppProc to true\n' +
+                        '  delay 0.4\n' +
                         '  tell process ppProc\n' +
                         '    click menu bar item "Edit" of menu bar 1\n' +
                         '    delay 0.3\n' +
@@ -3187,7 +3181,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     );
 
                     try {
-                        _cp.execSync('osascript /tmp/pp_copy_clip.scpt', { timeout: 6000 });
+                        _cp.execSync('osascript /tmp/pp_copy_clip.scpt', { timeout: 20000 });
                     } catch(_ce) {
                         var _cerr = String(_ce.message || _ce);
                         var _needsPerms = _cerr.indexOf('1002') >= 0 || _cerr.indexOf('-1743') >= 0 || _cerr.indexOf('keystroke') >= 0 || _cerr.indexOf('authorized') >= 0;
@@ -3210,11 +3204,9 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                         '    set ppProc to (name of p)\n' +
                         '    exit repeat\n' +
                         '  end repeat\n' +
-                        'end tell\n' +
-                        'if ppProc is "" then error "No Premiere Pro process found"\n' +
-                        'tell application ppProc to activate\n' +
-                        'delay 0.5\n' +
-                        'tell application "System Events"\n' +
+                        '  if ppProc is "" then error "No Premiere Pro process found"\n' +
+                        '  set frontmost of process ppProc to true\n' +
+                        '  delay 0.4\n' +
                         '  tell process ppProc\n' +
                         '    set mainWin to front window\n' +
                         '    set wx to item 1 of (get position of mainWin)\n' +
@@ -3263,7 +3255,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                         _cp.execSync('sleep 1.0');
 
                         try {
-                            var _pasteOut = _cp.execSync('osascript /tmp/pp_paste_attrs.scpt', { timeout: 12000 }).toString().trim();
+                            var _pasteOut = _cp.execSync('osascript /tmp/pp_paste_attrs.scpt', { timeout: 25000 }).toString().trim();
                             lwLog('[TEST 1 seq] <b>osascript done.</b> ' + _pasteOut + '<br>Check Effect Controls on <b>' + _ch.name + '</b>.');
                         } catch(_pe) {
                             lwLog('[TEST 1 seq] Paste error: ' + String(_pe.message || _pe).slice(0, 200));
