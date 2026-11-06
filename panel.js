@@ -1,10 +1,10 @@
-/* Course Builder Panel v143 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v144 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v143</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v144</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -145,7 +145,7 @@ document.getElementById('app').innerHTML = [
     '    <button class="btn-small" id="lwBtnBg" style="flex-shrink:0">BG...</button>',
     '    <div class="lu-info" id="lwBgInfo" style="margin:0;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">&mdash;</div>',
     '  </div>',
-    '  <div class="lu-info" id="lwInfo" style="margin-bottom:4px">Open the active <b>test</b> sequence and press Apply.</div>',
+    '  <div class="lu-info" id="lwInfo" style="margin-bottom:4px">Open the active <b>test</b> or <b>_template</b> sequence and press Apply.</div>',
     '  <div style="display:flex;gap:4px">',
     '    <button class="btn-lu-run" id="lwBtnRun" style="flex:1">&#9654;&#9654; Apply to all chapters</button>',
     '    <button class="btn-small" id="lwBtnRunTest" style="flex:0 0 auto;font-size:10px">&#128270; 1 cap</button>',
@@ -1191,7 +1191,7 @@ document.getElementById('btnCreatePreviews').addEventListener('click', function 
                 'var nmLow=nm.toLowerCase();var previewNm=nm+SUFFIX;' +
                 'if(nm.length>=SUFFIX.length&&nm.substr(nm.length-SUFFIX.length)===SUFFIX)continue;' +
                 'if(existingNames[previewNm]){skipped.push(nm+" (already exists)");continue;}' +
-                'if(nmLow.indexOf("webcam_")===0||nmLow.indexOf("nested")>=0||nm==="void"||nm==="test2"||nm==="test"){skipped.push(nm);continue;}' +
+                'if(nmLow.indexOf("webcam_")===0||nmLow.indexOf("nested")>=0||nm==="void"||nm==="test2"||nm==="test"||nmLow==="_template"||nmLow.indexOf("_template")===0){skipped.push(nm);continue;}' +
                 'var parentBin=nodeId?findParentBin(app.project.rootItem,nodeId):null;' +
                 'if(parentBin&&parentBin.name.toLowerCase().indexOf("peek inside")>=0){skipped.push(nm);continue;}' +
                 'try{' +
@@ -1967,7 +1967,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
             'for(var i=0;i<seqs.numSequences;i++){var s=seqs[i];if(!s)continue;' +
                 'var nm=s.name;var nml=nm.toLowerCase();' +
                 'if(nml.indexOf("_2026")<0)continue;' +
-                'if(nml.indexOf("webcam")>=0||nml.indexOf("nested")>=0||nml.indexOf("_preview")>=0||nml.indexOf("test")>=0)continue;' +
+                'if(nml.indexOf("webcam")>=0||nml.indexOf("nested")>=0||nml.indexOf("_preview")>=0||nml.indexOf("test")>=0||nml.indexOf("_template")>=0)continue;' +
                 'results.push(nm);' +
             '}return "ok|"+results.length+" sequences|"+results.join("|");' +
             '}catch(e){return "ERR: "+e.message;}})()',
@@ -2020,7 +2020,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
             'for(var i=0;i<ss.numSequences;i++){' +
                 'var s=ss[i];if(!s)continue;' +
                 'var nml=s.name.toLowerCase();' +
-                'if(nml.indexOf("_2026")<0||nml.indexOf("webcam")>=0||nml.indexOf("nested")>=0||nml.indexOf("test")>=0||nml.indexOf("preview")>=0||nml.indexOf("s&s")>=0||nml.indexOf("short and sweet")>=0||nml.indexOf("short&sweet")>=0)continue;' +
+                'if(nml.indexOf("_2026")<0||nml.indexOf("webcam")>=0||nml.indexOf("nested")>=0||nml.indexOf("test")>=0||nml.indexOf("_template")>=0||nml.indexOf("preview")>=0||nml.indexOf("s&s")>=0||nml.indexOf("short and sweet")>=0||nml.indexOf("short&sweet")>=0)continue;' +
                 'var out=d+"/"+s.name+".mp4";' +
                 'var _ok=false;' +
                 'try{app.encoder.encodeSequence(s,out,p,0,false);_ok=true;}catch(_e1){' +
@@ -2773,7 +2773,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
     if (lwBtnPluginDx) {
         lwBtnPluginDx.addEventListener('click', function () {
             lwBtnPluginDx.disabled = true;
-            lwLog('Scanning "test" sequence for audio plugins...');
+            lwLog('Scanning "test"/"_template" sequence for audio plugins...');
 
             // Phase 1: scan clip.components on sequence named "test" (not the active sequence)
             // Output: "PLUG:name~matchName~trackIdx" per 3rd-party component found
@@ -2782,12 +2782,13 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 'var out=[];' +
                 'try{' +
                     // Find the sequence named exactly "test" (case-insensitive)
+                    'function _isTplSeq(nm){var nl=(nm||"").toLowerCase();return nl==="test"||nl==="_template"||nl.indexOf("_test")===0||nl.indexOf("_template")===0;}' +
                     'var sq=null;' +
                     'for(var si=0;si<app.project.sequences.numSequences;si++){' +
                         'var s=app.project.sequences[si];' +
-                        'if(s&&s.name&&s.name.toLowerCase()==="test"){sq=s;break;}' +
+                        'if(s&&s.name&&_isTplSeq(s.name)){sq=s;break;}' +
                     '}' +
-                    'if(!sq)return "ERR:no sequence named test";' +
+                    'if(!sq)return "ERR:no sequence named test/_template";' +
                     'out.push("seq:"+sq.name);' +
                     'var builtIn={};' +
                     'builtIn["Volume"]=1;builtIn["Channel Volume"]=1;builtIn["Panner"]=1;' +
@@ -2828,7 +2829,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 }
 
                 if (!plugins.length) {
-                    lwLog('No 3rd-party plugins found in test sequence. Apply dxRevive to the first clip on A1 in the "test" sequence, then try again.');
+                    lwLog('No 3rd-party plugins found in test/_template sequence. Apply dxRevive to the first clip on A1 in the "test" or "_template" sequence, then try again.');
                     lwBtnPluginDx.disabled = false;
                     return;
                 }
@@ -2849,8 +2850,9 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     'var _pn=' + JSON.stringify(_plugName0) + ';' +
                     'var _out=[];' +
                     'try{' +
+                        'function _isTplSeq(nm){var nl=(nm||"").toLowerCase();return nl==="test"||nl==="_template"||nl.indexOf("_test")===0||nl.indexOf("_template")===0;}' +
                         'var _seen={};' +
-                        'function _skip(n){var nl=n.toLowerCase();return nl==="test"||nl.indexOf("test")===0||nl.indexOf("nested sequence")===0||n.indexOf("PREVIEW")>=0;}' +
+                        'function _skip(n){var nl=n.toLowerCase();return _isTplSeq(n)||nl.indexOf("test")===0||nl.indexOf("nested sequence")===0||n.indexOf("PREVIEW")>=0;}' +
                         'function _hasPlug(sq){try{var at=sq.audioTracks[_tr];if(!at||at.clips.numItems===0)return false;var ac=at.clips[0];for(var i=0;i<ac.components.numItems;i++){if(ac.components[i].displayName===_pn)return true;}}catch(e){}return false;}' +
                         'for(var si=0;si<app.project.sequences.numSequences;si++){' +
                             'var sq=app.project.sequences[si];' +
@@ -2862,7 +2864,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                         '}' +
                         // Activate test seq and select the plugin source clip
                         'var _testSeq=null;' +
-                        'for(var ti=0;ti<app.project.sequences.numSequences;ti++){var ts=app.project.sequences[ti];if(ts&&ts.name&&ts.name.toLowerCase()==="test"){_testSeq=ts;break;}}' +
+                        'for(var ti=0;ti<app.project.sequences.numSequences;ti++){var ts=app.project.sequences[ti];if(ts&&ts.name&&_isTplSeq(ts.name)){_testSeq=ts;break;}}' +
                         'if(!_testSeq)return "ERR:no-test-seq";' +
                         'try{app.project.openSequence(_testSeq.sequenceID);}catch(e){}' +
                         'app.project.activeSequence=_testSeq;' +
@@ -3037,8 +3039,9 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                 '(function(){' +
                 'var _out=[];' +
                 'try{' +
+                    'function _isTplSeq2(nm){var nl=(nm||"").toLowerCase();return nl==="test"||nl==="_template"||nl.indexOf("_test")===0||nl.indexOf("_template")===0;}' +
                     'var _testSeq=null;' +
-                    'for(var si=0;si<app.project.sequences.numSequences;si++){var ts=app.project.sequences[si];if(ts&&ts.name&&ts.name.toLowerCase()==="test"){_testSeq=ts;break;}}' +
+                    'for(var si=0;si<app.project.sequences.numSequences;si++){var ts=app.project.sequences[si];if(ts&&ts.name&&_isTplSeq2(ts.name)){_testSeq=ts;break;}}' +
                     'if(!_testSeq)return "ERR:no-test-seq";' +
                     'for(var ti=0;ti<_testSeq.audioTracks.numTracks;ti++){' +
                         'var at=_testSeq.audioTracks[ti];' +
