@@ -1,10 +1,10 @@
-/* Course Builder Panel v144 — https://github.com/ChessCom/coursebuilder */
+/* Course Builder Panel v145 — https://github.com/ChessCom/coursebuilder */
 (function () {
 
 /* ── Build HTML ──────────────────────────────────────────────────────────── */
 document.getElementById('app').innerHTML = [
     '<header>',
-    '  <h1>Course Builder <span id="versionTag">v144</span></h1>',
+    '  <h1>Course Builder <span id="versionTag">v145</span></h1>',
     '  <div class="header-status-row" style="display:flex;gap:12px;align-items:center;margin-top:3px"><span id="cepStatus" style="font-size:10px;color:#666"></span><span id="scriptStatus" style="font-size:10px;color:#666"><span style="color:#aaa">&#9679;</span> loading script...</span></div>',
     '</header>',
     '<div class="course-section">',
@@ -2911,10 +2911,18 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     // Use menu bar clicks — keyboard shortcuts go to the CEP panel
                     // which has focus; menu items work regardless of panel focus.
                     _fs.writeFileSync('/tmp/pp_copy_clip.scpt',
-                        'tell application "Adobe Premiere Pro 2025" to activate\n' +
+                        'set ppProc to ""\n' +
+                        'tell application "System Events"\n' +
+                        '  repeat with p in (every application process whose name contains "Premiere Pro")\n' +
+                        '    set ppProc to (name of p)\n' +
+                        '    exit repeat\n' +
+                        '  end repeat\n' +
+                        'end tell\n' +
+                        'if ppProc is "" then error "No Premiere Pro process found"\n' +
+                        'tell application ppProc to activate\n' +
                         'delay 0.5\n' +
                         'tell application "System Events"\n' +
-                        '  tell process "Adobe Premiere Pro 2025"\n' +
+                        '  tell process ppProc\n' +
                         '    click menu bar item "Edit" of menu bar 1\n' +
                         '    delay 0.3\n' +
                         '    click menu item "Copy" of menu 1 of menu bar item "Edit" of menu bar 1\n' +
@@ -2931,7 +2939,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                             lwLog('<b>&#9888; Permiso requerido:</b><br>' +
                                 'Para automatizar los atajos de teclado en Premiere Pro, debes dar permiso de Accesibilidad:<br>' +
                                 '<b>Configuración del Sistema &rsaquo; Privacidad y Seguridad &rsaquo; Accesibilidad</b><br>' +
-                                'Añade &ldquo;Adobe Premiere Pro 2025&rdquo; y vuelve a intentarlo.<br>' +
+                                'Añade &ldquo;Adobe Premiere Pro&rdquo; (Beta o 2025) y vuelve a intentarlo.<br>' +
                                 '<small>(err: ' + _cerr.slice(0, 120) + ')</small>');
                         } else {
                             lwLog('Copy failed: ' + _cerr.slice(0, 200));
@@ -2946,10 +2954,18 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     // JSX clip.selected=true does NOT create a real UI selection;
                     // a physical click at calculated window coordinates does.
                     _fs.writeFileSync('/tmp/pp_paste_attrs.scpt',
-                        'tell application "Adobe Premiere Pro 2025" to activate\n' +
+                        'set ppProc to ""\n' +
+                        'tell application "System Events"\n' +
+                        '  repeat with p in (every application process whose name contains "Premiere Pro")\n' +
+                        '    set ppProc to (name of p)\n' +
+                        '    exit repeat\n' +
+                        '  end repeat\n' +
+                        'end tell\n' +
+                        'if ppProc is "" then error "No Premiere Pro process found"\n' +
+                        'tell application ppProc to activate\n' +
                         'delay 0.5\n' +
                         'tell application "System Events"\n' +
-                        '  tell process "Adobe Premiere Pro 2025"\n' +
+                        '  tell process ppProc\n' +
                         '    set mainWin to front window\n' +
                         '    set wx to item 1 of (get position of mainWin)\n' +
                         '    set wy to item 2 of (get position of mainWin)\n' +
@@ -3151,10 +3167,18 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                     var _fs = require('fs');
 
                     _fs.writeFileSync('/tmp/pp_copy_clip.scpt',
-                        'tell application "Adobe Premiere Pro 2025" to activate\n' +
+                        'set ppProc to ""\n' +
+                        'tell application "System Events"\n' +
+                        '  repeat with p in (every application process whose name contains "Premiere Pro")\n' +
+                        '    set ppProc to (name of p)\n' +
+                        '    exit repeat\n' +
+                        '  end repeat\n' +
+                        'end tell\n' +
+                        'if ppProc is "" then error "No Premiere Pro process found"\n' +
+                        'tell application ppProc to activate\n' +
                         'delay 0.5\n' +
                         'tell application "System Events"\n' +
-                        '  tell process "Adobe Premiere Pro 2025"\n' +
+                        '  tell process ppProc\n' +
                         '    click menu bar item "Edit" of menu bar 1\n' +
                         '    delay 0.3\n' +
                         '    click menu item "Copy" of menu 1 of menu bar item "Edit" of menu bar 1\n' +
@@ -3168,7 +3192,7 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
                         var _cerr = String(_ce.message || _ce);
                         var _needsPerms = _cerr.indexOf('1002') >= 0 || _cerr.indexOf('-1743') >= 0 || _cerr.indexOf('keystroke') >= 0 || _cerr.indexOf('authorized') >= 0;
                         if (_needsPerms) {
-                            lwLog('<b>&#9888; Permiso requerido:</b> ve a Configuración del Sistema &rsaquo; Privacidad y Seguridad &rsaquo; Accesibilidad y añade Adobe Premiere Pro 2025.<br><small>(' + _cerr.slice(0, 120) + ')</small>');
+                            lwLog('<b>&#9888; Permiso requerido:</b> ve a Configuración del Sistema &rsaquo; Privacidad y Seguridad &rsaquo; Accesibilidad y añade Adobe Premiere Pro (Beta o 2025).<br><small>(' + _cerr.slice(0, 120) + ')</small>');
                         } else {
                             lwLog('[TEST 1 seq] Copy failed: ' + _cerr.slice(0, 200));
                         }
@@ -3180,10 +3204,18 @@ document.getElementById('btnCutPreview').addEventListener('click', function () {
 
                     // Paste script: click in timeline area to focus it, Cmd+A, Paste Attributes
                     _fs.writeFileSync('/tmp/pp_paste_attrs.scpt',
-                        'tell application "Adobe Premiere Pro 2025" to activate\n' +
+                        'set ppProc to ""\n' +
+                        'tell application "System Events"\n' +
+                        '  repeat with p in (every application process whose name contains "Premiere Pro")\n' +
+                        '    set ppProc to (name of p)\n' +
+                        '    exit repeat\n' +
+                        '  end repeat\n' +
+                        'end tell\n' +
+                        'if ppProc is "" then error "No Premiere Pro process found"\n' +
+                        'tell application ppProc to activate\n' +
                         'delay 0.5\n' +
                         'tell application "System Events"\n' +
-                        '  tell process "Adobe Premiere Pro 2025"\n' +
+                        '  tell process ppProc\n' +
                         '    set mainWin to front window\n' +
                         '    set wx to item 1 of (get position of mainWin)\n' +
                         '    set wy to item 2 of (get position of mainWin)\n' +
