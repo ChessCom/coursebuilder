@@ -246,6 +246,7 @@
     function importFilesToBin(paths,bin){
         if(!paths.length) return [];
         app.project.importFiles(paths,true,bin,false);
+        $.sleep(500); /* allow PP to finish linking audio streams before reading bin */
         var out=[];
         for(var j=0;j<bin.children.numItems;j++){ var item=bin.children[j]; if(item.type===ProjectItemType.CLIP) out.push(item); }
         log('    importados: '+out.length);
@@ -479,6 +480,13 @@
     }
 
     /* ── QE helpers ──────────────────────────────────────────────────── */
+    /* Strip parenthetical suffix from renamed effects, e.g.
+       "Drop Shadow (Board Ivan)" → "Drop Shadow" */
+    function effectBaseName(n){
+        var m=/^(.+?)\s*\([^)]+\)\s*$/.exec(n);
+        return m?m[1].replace(/\s+$/,''):n;
+    }
+
     function qeGetEffect(displayName){
         try{ var ef=qe.project.getVideoEffectByName(displayName); if(ef) return ef; }
         catch(e){ log('      qeGetEffect("'+displayName+'"): '+e.message); }
@@ -552,7 +560,8 @@
         if(qeClip){
             for(var ei=0;ei<tmplComps.length;ei++){
                 var eName=tmplComps[ei].displayName;
-                var efObj=qeGetEffect(eName);
+                /* Try exact name first, then base name (strips parenthetical rename) */
+                var efObj=qeGetEffect(eName)||qeGetEffect(effectBaseName(eName));
                 if(efObj){ try{ qeClip.addVideoEffect(efObj); }catch(e){} }
             }
         }
@@ -564,10 +573,12 @@
         for(var mi=0;mi<tmplComps.length;mi++){
             var tComp=tmplComps[mi];
             var tName=tComp.displayName;
+            var tBase=effectBaseName(tName);
             /* Buscar por nombre — PP puede reordenar efectos respecto al template */
             var matched=false;
             for(var ni=0;ni<newComps.length;ni++){
-                if(newComps[ni].displayName===tName){
+                var nName=newComps[ni].displayName;
+                if(nName===tName||effectBaseName(nName)===tBase){
                     copyPropsRecursive(tComp,newComps[ni],verbose);
                     log('      FX "'+tName+'" ✓');
                     copied++; matched=true; break;
