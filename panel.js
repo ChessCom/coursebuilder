@@ -36,7 +36,7 @@ document.getElementById('app').innerHTML = [
     '  </div>',
     '  <div class="status" id="acStatus"></div>',
     '</div>',
-    '<div class="tool-divider">BoardCrop <span class="tool-ver">v3.5</span></div>',
+    '<div class="tool-divider">BoardCrop <span class="tool-ver">v3.6</span></div>',
     '<div class="section">',
     '  <div class="ac-buttons">',
     '    <button class="btn-ac-sel" id="btnBcSel">&#9654; BoardCrop CHESSBASE</button>',
@@ -210,6 +210,25 @@ if (cepStatusEl) {
     cepStatusEl.style.color  = _hasCEP ? '#4caf50'     : '#f44336';
 }
 
+/* ExtendScript in PP Beta lacks JSON.stringify — prepend a polyfill to every evalScript */
+var _JSX_JSON_POLY =
+    'if(typeof JSON==="undefined"){JSON={};}' +
+    'if(typeof JSON.stringify!=="function"){' +
+    'JSON.stringify=function _s(v){' +
+    'var q=String.fromCharCode(34),bs=String.fromCharCode(92);' +
+    'if(v===null||v===undefined)return"null";' +
+    'var t=typeof v;' +
+    'if(t==="boolean")return v?"true":"false";' +
+    'if(t==="number")return isNaN(v)?"null":String(v);' +
+    'if(t==="string"){var r="",c,si;for(si=0;si<v.length;si++){c=v.charAt(si);' +
+    'if(c===q)r+=bs+q;else if(c===bs)r+=bs+bs;' +
+    'else if(c==="\\n")r+=bs+"n";else if(c==="\\r")r+=bs+"r";else if(c==="\\t")r+=bs+"t";' +
+    'else r+=c;}return q+r+q;}' +
+    'if(v instanceof Array){var a=[];for(var ai=0;ai<v.length;ai++)a.push(_s(v[ai]));return"["+a.join(",")+"]";}' +
+    'var p=[];for(var k in v){if(Object.prototype.hasOwnProperty.call(v,k)&&typeof v[k]!=="function")p.push(_s(String(k))+":"+_s(v[k]));}' +
+    'return"{"+p.join(",")+"}";' +
+    '};}';
+
 /* ── Safe eval ───────────────────────────────────────────────────────────── */
 function safeEvalScript(script, callback) {
     if (!_hasCEP) {
@@ -217,7 +236,7 @@ function safeEvalScript(script, callback) {
         return;
     }
     try {
-        window.__adobe_cep__.evalScript(script, function (result) {
+        window.__adobe_cep__.evalScript(_JSX_JSON_POLY + ';' + script, function (result) {
             if (typeof callback === 'function') callback(result);
         });
     } catch (e) {
