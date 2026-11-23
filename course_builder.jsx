@@ -1,5 +1,5 @@
 /**
- * Course Builder v110 – Premiere Pro ExtendScript
+ * Course Builder v112 – Premiere Pro ExtendScript
  *
  * ── CHANGELOG ────────────────────────────────────────────────────────────────
  *
@@ -1312,6 +1312,29 @@
                 }
                 log('  AL heredada de clone() ✓ – efectos intactos ("'+exc.projectItem.name+'", '+newEndSec.toFixed(2)+'s)');
                 adjLayerInserted=true;
+                /* Diagnóstico + reparación: comparar efectos de la AL clonada con la AL del template */
+                try{
+                    var cloneFx=getNonIntrinsicComps(exc), cn=[], ci2;
+                    for(ci2=0;ci2<cloneFx.length;ci2++) cn.push(cloneFx[ci2].displayName);
+                    log('  AL clon FX ('+cn.length+'): '+(cn.join(' | ')||'(ninguno)'));
+                    var tmplWc0=findSequenceByName(WEBCAM_SEQ_NAME), tmplAL=null;
+                    if(tmplWc0&&tmplWc0.videoTracks.numTracks>=2){
+                        var tAlTrk=tmplWc0.videoTracks[1];
+                        for(var tai=0;tai<tAlTrk.clips.numItems&&!tmplAL;tai++){
+                            var tac=tAlTrk.clips[tai];
+                            if(tac&&tac.projectItem&&!isRealClip(tac)) tmplAL=tac;
+                        }
+                    }
+                    if(tmplAL){
+                        var tmplFx=getNonIntrinsicComps(tmplAL), tn=[];
+                        for(ci2=0;ci2<tmplFx.length;ci2++) tn.push(tmplFx[ci2].displayName);
+                        log('  AL template FX ('+tn.length+'): '+(tn.join(' | ')||'(ninguno)'));
+                        if(cloneFx.length<tmplFx.length){
+                            log('  WARN: AL clon tiene menos FX que template – copiando desde template');
+                            applyEffectsFromTemplate(tmplAL,exc,cloneSeq,1,verbose);
+                        }
+                    } else { log('  AL template: no encontrada en "'+WEBCAM_SEQ_NAME+'"'); }
+                }catch(eFx){ log('  AL FX diag ERR: '+eFx.message); }
                 return; /* no sobreescribir */
             }
 
@@ -1921,7 +1944,7 @@
 
     /* ══ MAIN ════════════════════════════════════════════════════════════ */
     if(!app||!app.project){ alert('Abre un proyecto primero.'); return; }
-    log('=== Course Builder v110 ===');
+    log('=== Course Builder v112 ===');
     log('LOG: '+LOG_FILE);
     saveLog();
     try{ app.enableQE(); log('QE: enabled'); }catch(e){ log('QE FAIL: '+e.message); }
