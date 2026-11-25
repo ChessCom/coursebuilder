@@ -1,5 +1,5 @@
 /**
- * Course Builder v112 – Premiere Pro ExtendScript
+ * Course Builder v113 – Premiere Pro ExtendScript
  *
  * ── CHANGELOG ────────────────────────────────────────────────────────────────
  *
@@ -907,6 +907,7 @@
         var basePath = (dotIdx > 0 ? mediaPath.substr(0, dotIdx) : mediaPath);
         var wavPath = basePath + '.wav';
         var wavFile = new File(wavPath);
+        if (!wavFile.exists && new File(basePath + '.mp3').exists) { wavPath = basePath + '.mp3'; wavFile = new File(wavPath); }
 
         /* Si no existe el nombre exacto, buscar en el mismo directorio con
            coincidencia fuzzy progresiva:
@@ -916,15 +917,15 @@
               (cubre casos como "4...Bg4 & 4...Bf5 Part 2.mp4" ↔
                "4...Bf5 and 4...Bg4 Part 2.wav" donde cambia el orden y &/and) */
         if (!wavFile.exists) {
-            var baseNameForSearch = wavFile.name.replace(/\.wav$/i, '');
+            var baseNameForSearch = wavFile.name.replace(/\.(wav|mp3)$/i, '');
             var dir = wavFile.parent;
             if (dir && dir.exists) {
-                var allWavs = dir.getFiles('*.wav');
+                var allWavs = dir.getFiles('*.wav').concat(dir.getFiles('*.mp3')); /* WAV primero, luego MP3 */
                 var wi;
 
                 /* Paso 1: WAV empieza por baseName */
                 for (wi = 0; wi < allWavs.length; wi++) {
-                    var wn = allWavs[wi].name.replace(/\.wav$/i, '');
+                    var wn = allWavs[wi].name.replace(/\.(wav|mp3)$/i, '');
                     if (wn.indexOf(baseNameForSearch) === 0) {
                         wavFile = allWavs[wi]; wavPath = wavFile.fsName;
                         log('    WAV fuzzy (sufijo): "' + wavFile.name + '"');
@@ -935,7 +936,7 @@
                 /* Paso 2: WAV contiene baseName */
                 if (!wavFile.exists) {
                     for (wi = 0; wi < allWavs.length; wi++) {
-                        var wn2 = allWavs[wi].name.replace(/\.wav$/i, '');
+                        var wn2 = allWavs[wi].name.replace(/\.(wav|mp3)$/i, '');
                         if (wn2.indexOf(baseNameForSearch) >= 0) {
                             wavFile = allWavs[wi]; wavPath = wavFile.fsName;
                             log('    WAV fuzzy (contiene): "' + wavFile.name + '"');
@@ -954,7 +955,7 @@
                     if (strippedBase && strippedBase !== baseNameForSearch) {
                         /* 3a: WAV empieza por nombre sin prefijo */
                         for (wi = 0; wi < allWavs.length; wi++) {
-                            var wn3a = allWavs[wi].name.replace(/\.wav$/i, '');
+                            var wn3a = allWavs[wi].name.replace(/\.(wav|mp3)$/i, '');
                             if (wn3a.indexOf(strippedBase) === 0) {
                                 wavFile = allWavs[wi]; wavPath = wavFile.fsName;
                                 log('    WAV fuzzy (sin prefijo, empieza): "' + wavFile.name + '"');
@@ -964,7 +965,7 @@
                         /* 3b: WAV contiene nombre sin prefijo */
                         if (!wavFile.exists) {
                             for (wi = 0; wi < allWavs.length; wi++) {
-                                var wn3b = allWavs[wi].name.replace(/\.wav$/i, '');
+                                var wn3b = allWavs[wi].name.replace(/\.(wav|mp3)$/i, '');
                                 if (wn3b.indexOf(strippedBase) >= 0) {
                                     wavFile = allWavs[wi]; wavPath = wavFile.fsName;
                                     log('    WAV fuzzy (sin prefijo, contiene): "' + wavFile.name + '"');
@@ -988,7 +989,7 @@
                     var partBase = _extractPartNum(baseNameForSearch);
                     if (partBase) {
                         for (wi = 0; wi < allWavs.length; wi++) {
-                            var wn4 = allWavs[wi].name.replace(/\.wav$/i, '');
+                            var wn4 = allWavs[wi].name.replace(/\.(wav|mp3)$/i, '');
                             if (_extractPartNum(wn4) === partBase) {
                                 wavFile = allWavs[wi]; wavPath = wavFile.fsName;
                                 log('    WAV fuzzy (part ' + partBase + '): "' + wavFile.name + '"');
@@ -1411,7 +1412,7 @@
             /* Mismo nombre base Y no es un .wav (evita borrar el WAV si PP omite extensión) */
             if(cnBase!==mp4BaseName) return false;
             var ext=cn.split('.').pop().toLowerCase();
-            return ext!=='wav'; /* sólo borrar si NO es wav */
+            return ext!=='wav'&&ext!=='mp3'; /* sólo borrar si NO es audio externo (wav/mp3) */
         }
 
         /* Intentar WAV siempre que haya una ruta base; findAndAddWav hace búsqueda
@@ -1944,7 +1945,7 @@
 
     /* ══ MAIN ════════════════════════════════════════════════════════════ */
     if(!app||!app.project){ alert('Abre un proyecto primero.'); return; }
-    log('=== Course Builder v112 ===');
+    log('=== Course Builder v113 ===');
     log('LOG: '+LOG_FILE);
     saveLog();
     try{ app.enableQE(); log('QE: enabled'); }catch(e){ log('QE FAIL: '+e.message); }
